@@ -64,7 +64,7 @@ export const BudgetEnvelope: React.FC<Props> = ({ inputs, onChange }) => {
             <Wallet size={18} color="var(--accent-success)" /> Expense Budget Planner
           </h2>
           <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-            Adjust monthly envelopes to shape 60-year cash flow
+            Adjust monthly envelopes to shape long-term cash flow
           </p>
         </div>
 

@@ -22,7 +22,9 @@ interface Props {
 export const ProjectionChart: React.FC<Props> = ({ projections, retirementAge }) => {
   const [selectedAge, setSelectedAge] = useState<number>(retirementAge);
 
-  const activeYearData = projections.find((p) => p.age === selectedAge) || projections[0];
+  const startAge = projections[0]?.age || 40;
+  const currentSelectedAge = Math.min(100, Math.max(startAge, selectedAge));
+  const activeYearData = projections.find((p) => p.age === currentSelectedAge) || projections[0];
 
   const formatCurrency = (val: number) =>
     new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(val);
@@ -34,9 +36,11 @@ export const ProjectionChart: React.FC<Props> = ({ projections, retirementAge })
     <div className="glass-panel chart-panel">
       <div className="chart-header">
         <div>
-          <h2 style={{ fontSize: '17px', fontWeight: 600 }}>60-Year Net Worth Trajectory</h2>
+          <h2 style={{ fontSize: '17px', fontWeight: 600 }}>
+            {101 - startAge}-Year Net Worth Trajectory
+          </h2>
           <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-            Projection from Age {projections[0]?.age} to 100
+            Projection from Age {startAge} to 100
           </p>
         </div>
 
@@ -116,14 +120,14 @@ export const ProjectionChart: React.FC<Props> = ({ projections, retirementAge })
               Scrub Age:
             </span>
             <span style={{ fontWeight: 700, color: 'var(--accent-cyan)', whiteSpace: 'nowrap' }}>
-              Age {selectedAge} {activeYearData.isRetired ? '(Retired)' : '(Working)'}
+              Age {currentSelectedAge} {activeYearData.isRetired ? '(Retired)' : '(Working)'}
             </span>
           </div>
           <input
             type="range"
-            min={projections[0]?.age || 40}
+            min={startAge}
             max={100}
-            value={selectedAge}
+            value={currentSelectedAge}
             onChange={(e) => setSelectedAge(Number(e.target.value))}
           />
         </div>

@@ -55,7 +55,7 @@ export const App: React.FC = () => {
           </div>
           <div>
             <h1 className="header-title">Personal Finance Planner</h1>
-            <p className="header-subtitle">60-Year Wealth Projection Engine & Retirement Simulator</p>
+            <p className="header-subtitle">Lifetime Wealth Projection Engine & Retirement Simulator</p>
           </div>
         </div>
 
@@ -66,7 +66,7 @@ export const App: React.FC = () => {
             onClick={() => setActiveTab('chart')}
           >
             <TrendingUp size={15} style={{ flexShrink: 0 }} />
-            <span className="tab-text-full">Projection Trajectory</span>
+            <span className="tab-text-full">Lifetime Trajectory</span>
             <span className="tab-text-short">Trajectory</span>
           </button>
           <button
@@ -74,7 +74,7 @@ export const App: React.FC = () => {
             onClick={() => setActiveTab('ledger')}
           >
             <BarChart3 size={15} style={{ flexShrink: 0 }} />
-            <span className="tab-text-full">60-Year Ledger</span>
+            <span className="tab-text-full">Annual Ledger ({101 - inputs.startAge} Yrs)</span>
             <span className="tab-text-short">Ledger</span>
           </button>
           <button
@@ -140,7 +140,7 @@ export const App: React.FC = () => {
         <ScenarioControls inputs={inputs} onChange={handleInputChange} onReset={handleReset} />
 
         {/* Right Main Panel */}
-        <div>
+        <div className="main-panel">
           {activeTab === 'chart' && (
             <ProjectionChart projections={projections} retirementAge={inputs.retirementAge} />
           )}

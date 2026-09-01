@@ -9,6 +9,10 @@ import {
   Sparkles,
   ChevronDown,
   ChevronUp,
+  UserCheck,
+  Building,
+  Receipt,
+  Landmark,
 } from 'lucide-react';
 
 interface Props {
@@ -18,13 +22,38 @@ interface Props {
 }
 
 export const ScenarioControls: React.FC<Props> = ({ inputs, onChange, onReset }) => {
-  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [openSection, setOpenSection] = useState<{
+    balances: boolean;
+    rates: boolean;
+    taxes: boolean;
+    retirementVehicles: boolean;
+    socialSecurity: boolean;
+    advanced: boolean;
+  }>({
+    balances: false,
+    rates: false,
+    taxes: false,
+    retirementVehicles: false,
+    socialSecurity: false,
+    advanced: false,
+  });
+
+  const toggleSection = (section: keyof typeof openSection) => {
+    setOpenSection((prev) => ({ ...prev, [section]: !prev[section] }));
+  };
 
   const handleChange = (key: keyof FinancialInputs, value: any) => {
-    onChange({
+    const updated = {
       ...inputs,
       [key]: value,
-    });
+    };
+
+    // If startAge changed and retirementAge is now less than startAge, adjust retirementAge
+    if (key === 'startAge' && updated.retirementAge <= value) {
+      updated.retirementAge = Math.min(80, value + 1);
+    }
+
+    onChange(updated);
   };
 
   const formatCurrency = (val: number) =>
@@ -37,7 +66,7 @@ export const ScenarioControls: React.FC<Props> = ({ inputs, onChange, onReset })
     } else if (presetName === 'fire') {
       onChange({
         ...DEFAULT_INPUTS,
-        startAge: 35,
+        startAge: 30,
         retirementAge: 48,
         annualIncome: 160000,
         annualExpense: 48000,
@@ -48,6 +77,7 @@ export const ScenarioControls: React.FC<Props> = ({ inputs, onChange, onReset })
     } else if (presetName === 'conservative') {
       onChange({
         ...DEFAULT_INPUTS,
+        startAge: 40,
         retirementAge: 65,
         rateGrowth: 0.05,
         rateBalance: 0.03,
@@ -68,7 +98,7 @@ export const ScenarioControls: React.FC<Props> = ({ inputs, onChange, onReset })
     <div className="glass-panel controls-card">
       <div className="section-title">
         <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Sliders size={18} color="#3b82f6" /> Scenario Assumptions
+          <Sliders size={18} color="#3b82f6" /> Scenario Parameters
         </span>
         <button
           onClick={onReset}
@@ -81,7 +111,7 @@ export const ScenarioControls: React.FC<Props> = ({ inputs, onChange, onReset })
             textDecoration: 'underline',
           }}
         >
-          Reset
+          Reset All
         </button>
       </div>
 
@@ -122,218 +152,637 @@ export const ScenarioControls: React.FC<Props> = ({ inputs, onChange, onReset })
         </div>
       </div>
 
-      {/* Core Milestones */}
-      <div className="input-group">
-        <div className="input-header">
-          <span>Target Retirement Age</span>
-          <span className="input-value">{inputs.retirementAge} yrs</span>
+      {/* 1. CORE MILESTONES */}
+      <div style={{ borderBottom: '1px solid var(--border-card)', paddingBottom: '12px' }}>
+        <div className="section-title" style={{ fontSize: '13px', marginBottom: '10px' }}>
+          <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <UserCheck size={15} color="var(--accent-cyan)" /> Core Milestones
+          </span>
         </div>
-        <input
-          type="range"
-          min={40}
-          max={75}
-          step={1}
-          value={inputs.retirementAge}
-          onChange={(e) => handleChange('retirementAge', Number(e.target.value))}
-        />
-      </div>
 
-      {/* Current Income */}
-      <div className="input-group">
-        <div className="input-header">
-          <span>Annual Gross Income</span>
-          <span className="input-value">{formatCurrency(inputs.annualIncome)}</span>
-        </div>
-        <input
-          type="range"
-          min={30000}
-          max={400000}
-          step={5000}
-          value={inputs.annualIncome}
-          onChange={(e) => handleChange('annualIncome', Number(e.target.value))}
-        />
-      </div>
-
-      {/* Annual Expenses */}
-      <div className="input-group">
-        <div className="input-header">
-          <span>Annual Living Expenses</span>
-          <span className="input-value">{formatCurrency(inputs.annualExpense)}</span>
-        </div>
-        <input
-          type="range"
-          min={20000}
-          max={200000}
-          step={2500}
-          value={inputs.annualExpense}
-          onChange={(e) => handleChange('annualExpense', Number(e.target.value))}
-        />
-      </div>
-
-      <hr style={{ borderColor: 'var(--border-card)', margin: '4px 0 8px' }} />
-
-      {/* Return & Inflation Rates */}
-      <div className="section-title" style={{ fontSize: '13px', marginBottom: '8px' }}>
-        <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <Percent size={14} color="#8b5cf6" /> Returns & Inflation
-        </span>
-      </div>
-
-      <div className="input-group">
-        <div className="input-header">
-          <span>Growth Stocks ROI</span>
-          <span className="input-value">{(inputs.rateGrowth * 100).toFixed(1)}%</span>
-        </div>
-        <input
-          type="range"
-          min={0.03}
-          max={0.12}
-          step={0.005}
-          value={inputs.rateGrowth}
-          onChange={(e) => handleChange('rateGrowth', Number(e.target.value))}
-        />
-      </div>
-
-      <div className="input-group">
-        <div className="input-header">
-          <span>Inflation Rate</span>
-          <span className="input-value">{(inputs.inflationRate * 100).toFixed(1)}%</span>
-        </div>
-        <input
-          type="range"
-          min={0.01}
-          max={0.06}
-          step={0.005}
-          value={inputs.inflationRate}
-          onChange={(e) => handleChange('inflationRate', Number(e.target.value))}
-        />
-      </div>
-
-      <hr style={{ borderColor: 'var(--border-card)', margin: '4px 0 8px' }} />
-
-      {/* Initial Balances */}
-      <div className="section-title" style={{ fontSize: '13px', marginBottom: '8px' }}>
-        <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <DollarSign size={14} color="#10b981" /> Starting Balances (Age {inputs.startAge})
-        </span>
-      </div>
-
-      <div className="input-group">
-        <div className="input-header">
-          <span>Starting 401(k) / IRA</span>
-          <span className="input-value">{formatCurrency(inputs.init401k)}</span>
-        </div>
-        <input
-          type="range"
-          min={0}
-          max={1000000}
-          step={25000}
-          value={inputs.init401k}
-          onChange={(e) => handleChange('init401k', Number(e.target.value))}
-        />
-      </div>
-
-      <div className="input-group">
-        <div className="input-header">
-          <span>Starting Cash Savings</span>
-          <span className="input-value">{formatCurrency(inputs.initCash)}</span>
-        </div>
-        <input
-          type="range"
-          min={0}
-          max={300000}
-          step={10000}
-          value={inputs.initCash}
-          onChange={(e) => handleChange('initCash', Number(e.target.value))}
-        />
-      </div>
-
-      {/* Advanced Rules & Toggles Dropdown */}
-      <button
-        onClick={() => setShowAdvanced(!showAdvanced)}
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          width: '100%',
-          background: 'rgba(255,255,255,0.04)',
-          border: '1px solid var(--border-card)',
-          borderRadius: '8px',
-          padding: '10px 14px',
-          color: 'var(--text-main)',
-          fontSize: '13px',
-          fontWeight: 600,
-          cursor: 'pointer',
-          marginTop: '8px',
-        }}
-      >
-        <span>Advanced Switches & Vehicles</span>
-        {showAdvanced ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-      </button>
-
-      {showAdvanced && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '10px', fontSize: '13px' }}>
-          {/* Social Security Switch */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span>Include Social Security</span>
-            <button
-              onClick={() => handleChange('enableSocialSecurity', !inputs.enableSocialSecurity)}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: inputs.enableSocialSecurity ? 'var(--accent-success)' : 'var(--text-dim)' }}
-            >
-              {inputs.enableSocialSecurity ? <ToggleRight size={28} /> : <ToggleLeft size={28} />}
-            </button>
+        {/* Starting Age */}
+        <div className="input-group">
+          <div className="input-header">
+            <span>Starting Age</span>
+            <span className="input-value">{inputs.startAge} yrs</span>
           </div>
+          <input
+            type="range"
+            min={18}
+            max={75}
+            step={1}
+            value={inputs.startAge}
+            onChange={(e) => handleChange('startAge', Number(e.target.value))}
+          />
+        </div>
 
-          {inputs.enableSocialSecurity && (
-            <div className="input-group" style={{ paddingLeft: '8px', borderLeft: '2px solid var(--accent-success)' }}>
+        {/* Target Retirement Age */}
+        <div className="input-group">
+          <div className="input-header">
+            <span>Target Retirement Age</span>
+            <span className="input-value">{inputs.retirementAge} yrs</span>
+          </div>
+          <input
+            type="range"
+            min={Math.max(inputs.startAge + 1, 30)}
+            max={85}
+            step={1}
+            value={inputs.retirementAge}
+            onChange={(e) => handleChange('retirementAge', Number(e.target.value))}
+          />
+        </div>
+
+        {/* Annual Income */}
+        <div className="input-group">
+          <div className="input-header">
+            <span>Annual Gross Starting Income</span>
+            <span className="input-value">{formatCurrency(inputs.annualIncome)}</span>
+          </div>
+          <input
+            type="range"
+            min={20000}
+            max={500000}
+            step={5000}
+            value={inputs.annualIncome}
+            onChange={(e) => handleChange('annualIncome', Number(e.target.value))}
+          />
+        </div>
+
+        {/* Annual Living Expense */}
+        <div className="input-group">
+          <div className="input-header">
+            <span>Annual Living Expense</span>
+            <span className="input-value">{formatCurrency(inputs.annualExpense)}</span>
+          </div>
+          <input
+            type="range"
+            min={10000}
+            max={300000}
+            step={2500}
+            value={inputs.annualExpense}
+            onChange={(e) => handleChange('annualExpense', Number(e.target.value))}
+          />
+        </div>
+      </div>
+
+      {/* 2. STARTING ASSET BALANCES (COLLAPSIBLE) */}
+      <div style={{ borderBottom: '1px solid var(--border-card)', paddingBottom: '12px' }}>
+        <button
+          onClick={() => toggleSection('balances')}
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            width: '100%',
+            background: 'transparent',
+            border: 'none',
+            color: 'var(--text-main)',
+            fontSize: '13px',
+            fontWeight: 600,
+            cursor: 'pointer',
+            padding: '4px 0',
+          }}
+        >
+          <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <DollarSign size={15} color="#10b981" /> Starting Balances (Age {inputs.startAge})
+          </span>
+          {openSection.balances ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+        </button>
+
+        {openSection.balances && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px' }}>
+            <div className="input-group">
               <div className="input-header">
-                <span>SS Start Age</span>
-                <span className="input-value">{inputs.ssAge} yrs</span>
+                <span>Cash Savings</span>
+                <span className="input-value">{formatCurrency(inputs.initCash)}</span>
               </div>
               <input
                 type="range"
-                min={62}
-                max={70}
-                value={inputs.ssAge}
-                onChange={(e) => handleChange('ssAge', Number(e.target.value))}
+                min={0}
+                max={500000}
+                step={5000}
+                value={inputs.initCash}
+                onChange={(e) => handleChange('initCash', Number(e.target.value))}
               />
             </div>
-          )}
 
-          {/* 401(k) Employer Match Switch */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span>401(k) Employer Match</span>
-            <button
-              onClick={() => handleChange('enable401kMatch', !inputs.enable401kMatch)}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: inputs.enable401kMatch ? 'var(--accent-primary)' : 'var(--text-dim)' }}
-            >
-              {inputs.enable401kMatch ? <ToggleRight size={28} /> : <ToggleLeft size={28} />}
-            </button>
-          </div>
+            <div className="input-group">
+              <div className="input-header">
+                <span>401(k) / Traditional IRA</span>
+                <span className="input-value">{formatCurrency(inputs.init401k)}</span>
+              </div>
+              <input
+                type="range"
+                min={0}
+                max={1500000}
+                step={25000}
+                value={inputs.init401k}
+                onChange={(e) => handleChange('init401k', Number(e.target.value))}
+              />
+            </div>
 
-          {/* Roth Conversion Window Switch */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span>Roth Conversions (Ages 60–70)</span>
-            <button
-              onClick={() => handleChange('enableRothConversion', !inputs.enableRothConversion)}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: inputs.enableRothConversion ? 'var(--accent-purple)' : 'var(--text-dim)' }}
-            >
-              {inputs.enableRothConversion ? <ToggleRight size={28} /> : <ToggleLeft size={28} />}
-            </button>
-          </div>
+            <div className="input-group">
+              <div className="input-header">
+                <span>Roth IRA Balance</span>
+                <span className="input-value">{formatCurrency(inputs.initRoth)}</span>
+              </div>
+              <input
+                type="range"
+                min={0}
+                max={500000}
+                step={5000}
+                value={inputs.initRoth}
+                onChange={(e) => handleChange('initRoth', Number(e.target.value))}
+              />
+            </div>
 
-          {/* Senior Expense Reduction Switch */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span>Reduce Expenses @ Age 75</span>
-            <button
-              onClick={() => handleChange('reduceExpensesAt75', !inputs.reduceExpensesAt75)}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: inputs.reduceExpensesAt75 ? 'var(--accent-cyan)' : 'var(--text-dim)' }}
-            >
-              {inputs.reduceExpensesAt75 ? <ToggleRight size={28} /> : <ToggleLeft size={28} />}
-            </button>
+            <div className="input-group">
+              <div className="input-header">
+                <span>Taxable Growth Investments</span>
+                <span className="input-value">{formatCurrency(inputs.initGrowthInv)}</span>
+              </div>
+              <input
+                type="range"
+                min={0}
+                max={1000000}
+                step={10000}
+                value={inputs.initGrowthInv}
+                onChange={(e) => handleChange('initGrowthInv', Number(e.target.value))}
+              />
+            </div>
+
+            <div className="input-group">
+              <div className="input-header">
+                <span>Balanced Fund Investments</span>
+                <span className="input-value">{formatCurrency(inputs.initBalanceInv)}</span>
+              </div>
+              <input
+                type="range"
+                min={0}
+                max={500000}
+                step={10000}
+                value={inputs.initBalanceInv}
+                onChange={(e) => handleChange('initBalanceInv', Number(e.target.value))}
+              />
+            </div>
+
+            <div className="input-group">
+              <div className="input-header">
+                <span>Education Funds (529)</span>
+                <span className="input-value">{formatCurrency(inputs.initEdu)}</span>
+              </div>
+              <input
+                type="range"
+                min={0}
+                max={250000}
+                step={5000}
+                value={inputs.initEdu}
+                onChange={(e) => handleChange('initEdu', Number(e.target.value))}
+              />
+            </div>
+
+            <div className="input-group">
+              <div className="input-header">
+                <span>Property / Real Estate Equity</span>
+                <span className="input-value">{formatCurrency(inputs.initProperty)}</span>
+              </div>
+              <input
+                type="range"
+                min={0}
+                max={2000000}
+                step={25000}
+                value={inputs.initProperty}
+                onChange={(e) => handleChange('initProperty', Number(e.target.value))}
+              />
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
+
+      {/* 3. GROWTH & INFLATION RATES (COLLAPSIBLE) */}
+      <div style={{ borderBottom: '1px solid var(--border-card)', paddingBottom: '12px' }}>
+        <button
+          onClick={() => toggleSection('rates')}
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            width: '100%',
+            background: 'transparent',
+            border: 'none',
+            color: 'var(--text-main)',
+            fontSize: '13px',
+            fontWeight: 600,
+            cursor: 'pointer',
+            padding: '4px 0',
+          }}
+        >
+          <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <Percent size={15} color="#8b5cf6" /> Growth & Inflation Rates
+          </span>
+          {openSection.rates ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+        </button>
+
+        {openSection.rates && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px' }}>
+            <div className="input-group">
+              <div className="input-header">
+                <span>Growth Investments ROI</span>
+                <span className="input-value">{(inputs.rateGrowth * 100).toFixed(1)}%</span>
+              </div>
+              <input
+                type="range"
+                min={0.02}
+                max={0.15}
+                step={0.005}
+                value={inputs.rateGrowth}
+                onChange={(e) => handleChange('rateGrowth', Number(e.target.value))}
+              />
+            </div>
+
+            <div className="input-group">
+              <div className="input-header">
+                <span>Balanced Investments ROI</span>
+                <span className="input-value">{(inputs.rateBalance * 100).toFixed(1)}%</span>
+              </div>
+              <input
+                type="range"
+                min={0.01}
+                max={0.10}
+                step={0.005}
+                value={inputs.rateBalance}
+                onChange={(e) => handleChange('rateBalance', Number(e.target.value))}
+              />
+            </div>
+
+            <div className="input-group">
+              <div className="input-header">
+                <span>Cash Savings Yield</span>
+                <span className="input-value">{(inputs.rateIncome * 100).toFixed(1)}%</span>
+              </div>
+              <input
+                type="range"
+                min={0.0}
+                max={0.07}
+                step={0.005}
+                value={inputs.rateIncome}
+                onChange={(e) => handleChange('rateIncome', Number(e.target.value))}
+              />
+            </div>
+
+            <div className="input-group">
+              <div className="input-header">
+                <span>Annual Inflation Rate</span>
+                <span className="input-value">{(inputs.inflationRate * 100).toFixed(1)}%</span>
+              </div>
+              <input
+                type="range"
+                min={0.01}
+                max={0.08}
+                step={0.005}
+                value={inputs.inflationRate}
+                onChange={(e) => handleChange('inflationRate', Number(e.target.value))}
+              />
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* 4. TAX BRACKETS (COLLAPSIBLE) */}
+      <div style={{ borderBottom: '1px solid var(--border-card)', paddingBottom: '12px' }}>
+        <button
+          onClick={() => toggleSection('taxes')}
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            width: '100%',
+            background: 'transparent',
+            border: 'none',
+            color: 'var(--text-main)',
+            fontSize: '13px',
+            fontWeight: 600,
+            cursor: 'pointer',
+            padding: '4px 0',
+          }}
+        >
+          <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <Receipt size={15} color="var(--accent-warning)" /> Progressive Tax Rates
+          </span>
+          {openSection.taxes ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+        </button>
+
+        {openSection.taxes && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px' }}>
+            <div className="input-group">
+              <div className="input-header">
+                <span>Top Bracket Rate (High Tier)</span>
+                <span className="input-value">{(inputs.taxRateHigh * 100).toFixed(0)}%</span>
+              </div>
+              <input
+                type="range"
+                min={0.15}
+                max={0.45}
+                step={0.01}
+                value={inputs.taxRateHigh}
+                onChange={(e) => handleChange('taxRateHigh', Number(e.target.value))}
+              />
+            </div>
+
+            <div className="input-group">
+              <div className="input-header">
+                <span>Base Bracket Rate (Low Tier)</span>
+                <span className="input-value">{(inputs.taxRateLow * 100).toFixed(0)}%</span>
+              </div>
+              <input
+                type="range"
+                min={0.0}
+                max={0.15}
+                step={0.01}
+                value={inputs.taxRateLow}
+                onChange={(e) => handleChange('taxRateLow', Number(e.target.value))}
+              />
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* 5. RETIREMENT VEHICLES & 401K/ROTH (COLLAPSIBLE) */}
+      <div style={{ borderBottom: '1px solid var(--border-card)', paddingBottom: '12px' }}>
+        <button
+          onClick={() => toggleSection('retirementVehicles')}
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            width: '100%',
+            background: 'transparent',
+            border: 'none',
+            color: 'var(--text-main)',
+            fontSize: '13px',
+            fontWeight: 600,
+            cursor: 'pointer',
+            padding: '4px 0',
+          }}
+        >
+          <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <Building size={15} color="var(--accent-purple)" /> 401(k) & Roth Strategies
+          </span>
+          {openSection.retirementVehicles ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+        </button>
+
+        {openSection.retirementVehicles && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px' }}>
+            {/* 401k Limit */}
+            <div className="input-group">
+              <div className="input-header">
+                <span>401(k) Pre-Tax Annual Limit</span>
+                <span className="input-value">{formatCurrency(inputs.pretax401kLimit)}</span>
+              </div>
+              <input
+                type="range"
+                min={0}
+                max={35000}
+                step={500}
+                value={inputs.pretax401kLimit}
+                onChange={(e) => handleChange('pretax401kLimit', Number(e.target.value))}
+              />
+            </div>
+
+            {/* 401k Match Toggle & % */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span>401(k) Employer Match</span>
+              <button
+                onClick={() => handleChange('enable401kMatch', !inputs.enable401kMatch)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: inputs.enable401kMatch ? 'var(--accent-primary)' : 'var(--text-dim)' }}
+              >
+                {inputs.enable401kMatch ? <ToggleRight size={26} /> : <ToggleLeft size={26} />}
+              </button>
+            </div>
+
+            {inputs.enable401kMatch && (
+              <div className="input-group" style={{ paddingLeft: '8px', borderLeft: '2px solid var(--accent-primary)' }}>
+                <div className="input-header">
+                  <span>Employer Match %</span>
+                  <span className="input-value">{(inputs.companyMatchPct * 100).toFixed(1)}%</span>
+                </div>
+                <input
+                  type="range"
+                  min={0.01}
+                  max={0.10}
+                  step={0.005}
+                  value={inputs.companyMatchPct}
+                  onChange={(e) => handleChange('companyMatchPct', Number(e.target.value))}
+                />
+              </div>
+            )}
+
+            {/* Roth Contribution */}
+            <div className="input-group">
+              <div className="input-header">
+                <span>Roth IRA Annual Contribution</span>
+                <span className="input-value">{formatCurrency(inputs.rothContribution)}</span>
+              </div>
+              <input
+                type="range"
+                min={0}
+                max={15000}
+                step={500}
+                value={inputs.rothContribution}
+                onChange={(e) => handleChange('rothContribution', Number(e.target.value))}
+              />
+            </div>
+
+            {/* Roth Conversion Window */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span>Roth Conversion Window</span>
+              <button
+                onClick={() => handleChange('enableRothConversion', !inputs.enableRothConversion)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: inputs.enableRothConversion ? 'var(--accent-purple)' : 'var(--text-dim)' }}
+              >
+                {inputs.enableRothConversion ? <ToggleRight size={26} /> : <ToggleLeft size={26} />}
+              </button>
+            </div>
+
+            {inputs.enableRothConversion && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', paddingLeft: '8px', borderLeft: '2px solid var(--accent-purple)' }}>
+                <div className="input-group">
+                  <div className="input-header">
+                    <span>Annual Conversion Amount</span>
+                    <span className="input-value">{formatCurrency(inputs.rothConvAnnualAmount)}/yr</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={2000}
+                    max={50000}
+                    step={1000}
+                    value={inputs.rothConvAnnualAmount}
+                    onChange={(e) => handleChange('rothConvAnnualAmount', Number(e.target.value))}
+                  />
+                </div>
+
+                <div className="input-group">
+                  <div className="input-header">
+                    <span>Conversion Start Age</span>
+                    <span className="input-value">{inputs.rothConvAgeStart} yrs</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={50}
+                    max={75}
+                    step={1}
+                    value={inputs.rothConvAgeStart}
+                    onChange={(e) => handleChange('rothConvAgeStart', Number(e.target.value))}
+                  />
+                </div>
+
+                <div className="input-group">
+                  <div className="input-header">
+                    <span>Conversion End Age</span>
+                    <span className="input-value">{inputs.rothConvAgeEnd} yrs</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={Math.max(inputs.rothConvAgeStart + 1, 55)}
+                    max={85}
+                    step={1}
+                    value={inputs.rothConvAgeEnd}
+                    onChange={(e) => handleChange('rothConvAgeEnd', Number(e.target.value))}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* 6. SOCIAL SECURITY & PENSIONS (COLLAPSIBLE) */}
+      <div style={{ borderBottom: '1px solid var(--border-card)', paddingBottom: '12px' }}>
+        <button
+          onClick={() => toggleSection('socialSecurity')}
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            width: '100%',
+            background: 'transparent',
+            border: 'none',
+            color: 'var(--text-main)',
+            fontSize: '13px',
+            fontWeight: 600,
+            cursor: 'pointer',
+            padding: '4px 0',
+          }}
+        >
+          <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <Landmark size={15} color="var(--accent-success)" /> Social Security & Payouts
+          </span>
+          {openSection.socialSecurity ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+        </button>
+
+        {openSection.socialSecurity && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span>Include Social Security</span>
+              <button
+                onClick={() => handleChange('enableSocialSecurity', !inputs.enableSocialSecurity)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: inputs.enableSocialSecurity ? 'var(--accent-success)' : 'var(--text-dim)' }}
+              >
+                {inputs.enableSocialSecurity ? <ToggleRight size={26} /> : <ToggleLeft size={26} />}
+              </button>
+            </div>
+
+            {inputs.enableSocialSecurity && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', paddingLeft: '8px', borderLeft: '2px solid var(--accent-success)' }}>
+                <div className="input-group">
+                  <div className="input-header">
+                    <span>Claiming Start Age</span>
+                    <span className="input-value">{inputs.ssAge} yrs</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={62}
+                    max={70}
+                    step={1}
+                    value={inputs.ssAge}
+                    onChange={(e) => handleChange('ssAge', Number(e.target.value))}
+                  />
+                </div>
+
+                <div className="input-group">
+                  <div className="input-header">
+                    <span>Primary Annual Benefit</span>
+                    <span className="input-value">{formatCurrency(inputs.ssAnnualA)}/yr</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={0}
+                    max={60000}
+                    step={1000}
+                    value={inputs.ssAnnualA}
+                    onChange={(e) => handleChange('ssAnnualA', Number(e.target.value))}
+                  />
+                </div>
+
+                <div className="input-group">
+                  <div className="input-header">
+                    <span>Spouse / Partner Benefit</span>
+                    <span className="input-value">{formatCurrency(inputs.ssAnnualB)}/yr</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={0}
+                    max={60000}
+                    step={1000}
+                    value={inputs.ssAnnualB}
+                    onChange={(e) => handleChange('ssAnnualB', Number(e.target.value))}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* 7. ADVANCED SPENDING RULES (COLLAPSIBLE) */}
+      <div>
+        <button
+          onClick={() => toggleSection('advanced')}
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            width: '100%',
+            background: 'transparent',
+            border: 'none',
+            color: 'var(--text-main)',
+            fontSize: '13px',
+            fontWeight: 600,
+            cursor: 'pointer',
+            padding: '4px 0',
+          }}
+        >
+          <span>Senior Expense Reductions</span>
+          {openSection.advanced ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+        </button>
+
+        {openSection.advanced && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span>Reduce Expenses @ Age 75</span>
+              <button
+                onClick={() => handleChange('reduceExpensesAt75', !inputs.reduceExpensesAt75)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: inputs.reduceExpensesAt75 ? 'var(--accent-cyan)' : 'var(--text-dim)' }}
+              >
+                {inputs.reduceExpensesAt75 ? <ToggleRight size={26} /> : <ToggleLeft size={26} />}
+              </button>
+            </div>
+            <p style={{ fontSize: '11px', color: 'var(--text-dim)' }}>
+              Automatically reduces annual travel by 50% and living expenses by 25% post-75.
+            </p>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
