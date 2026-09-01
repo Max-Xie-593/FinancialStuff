@@ -20,6 +20,16 @@ export interface FinancialInputs {
   annualExpense: number;
   travelExpense: number;
   medicalInsurance: number;
+  
+  // Travel Adjustment Multipliers
+  travelAdjRetire: number; // multiplier after retirement (default: 2.0)
+  travelAdj75: number;     // multiplier after age 75 (default: 0.5)
+
+  // Medical Insurance Multipliers & Medicare
+  medicareStartAge: number;        // age Medicare starts (default: 65)
+  medicalAdjRetirement: number;   // multiplier in retirement before Medicare (default: 4.0)
+  medicalAdjMedicare: number;     // multiplier after Medicare starts (default: 3.5)
+
   taxRateHigh: number;
   taxRateLow: number;
   companyMatchPct: number;
@@ -110,6 +120,11 @@ export const DEFAULT_INPUTS: FinancialInputs = {
   annualExpense: 60000,
   travelExpense: 5300,
   medicalInsurance: 4800,
+  travelAdjRetire: 2.0,
+  travelAdj75: 0.5,
+  medicareStartAge: 65,
+  medicalAdjRetirement: 4.0,
+  medicalAdjMedicare: 3.5,
   taxRateHigh: 0.25,
   taxRateLow: 0.05,
   companyMatchPct: 0.03,
@@ -230,8 +245,25 @@ export function runFinanceProjection(inputs: FinancialInputs): YearProjection[] 
     const incomeTax = taxableBasis * effTaxRate;
 
     // Expenses
-    const travelExpenses = age < 75 || !inputs.reduceExpensesAt75 ? inputs.travelExpense : inputs.travelExpense * 0.5;
-    const medicalInsurance = isWorking ? inputs.medicalInsurance : inputs.medicalInsurance * 1.5;
+    // Travel Expenses Calculation with retirement & age 75 multipliers
+    let travelExpenses = inputs.travelExpense;
+    if (isRetired) {
+      if (age < 75 || !inputs.reduceExpensesAt75) {
+        travelExpenses = inputs.travelExpense * inputs.travelAdjRetire;
+      } else {
+        travelExpenses = inputs.travelExpense * inputs.travelAdj75;
+      }
+    }
+
+    // Medical Insurance Calculation with retirement & Medicare multipliers
+    let medicalInsurance = inputs.medicalInsurance;
+    if (isRetired) {
+      if (age < inputs.medicareStartAge) {
+        medicalInsurance = inputs.medicalInsurance * inputs.medicalAdjRetirement;
+      } else {
+        medicalInsurance = inputs.medicalInsurance * inputs.medicalAdjMedicare;
+      }
+    }
     
     let otherExpenses = inputs.annualExpense;
     if (age >= 75 && inputs.reduceExpensesAt75) {

@@ -825,7 +825,7 @@ export const ScenarioControls: React.FC<Props> = ({ inputs, onChange, onReset })
         )}
       </div>
 
-      {/* 7. ADVANCED SPENDING RULES (COLLAPSIBLE) */}
+      {/* 7. RETIREMENT & SENIOR ADJUSTMENTS (COLLAPSIBLE) */}
       <div>
         <button
           onClick={() => toggleSection('advanced')}
@@ -843,14 +843,104 @@ export const ScenarioControls: React.FC<Props> = ({ inputs, onChange, onReset })
             padding: '4px 0',
           }}
         >
-          <span>Senior Expense Reductions</span>
+          <span>Retirement Expense Multipliers</span>
           {openSection.advanced ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
         </button>
 
         {openSection.advanced && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '10px' }}>
+            {/* Travel Adjustment Multipliers */}
+            <div style={{ background: 'rgba(15, 23, 42, 0.8)', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-card)' }}>
+              <span style={{ fontSize: '11px', color: 'var(--accent-cyan)', textTransform: 'uppercase', fontWeight: 600, display: 'block', marginBottom: '8px' }}>
+                ✈️ Travel Multipliers (Spreadsheet)
+              </span>
+
+              <div className="input-group">
+                <div className="input-header">
+                  <span>Travel Multiplier (Early Retirement)</span>
+                  <span className="input-value">{inputs.travelAdjRetire.toFixed(1)}x</span>
+                </div>
+                <input
+                  type="range"
+                  min={0.5}
+                  max={5.0}
+                  step={0.1}
+                  value={inputs.travelAdjRetire}
+                  onChange={(e) => handleChange('travelAdjRetire', Number(e.target.value))}
+                />
+              </div>
+
+              <div className="input-group">
+                <div className="input-header">
+                  <span>Travel Multiplier (Post-Age 75)</span>
+                  <span className="input-value">{inputs.travelAdj75.toFixed(1)}x</span>
+                </div>
+                <input
+                  type="range"
+                  min={0.0}
+                  max={2.0}
+                  step={0.1}
+                  value={inputs.travelAdj75}
+                  onChange={(e) => handleChange('travelAdj75', Number(e.target.value))}
+                />
+              </div>
+            </div>
+
+            {/* Medical Insurance & Medicare Multipliers */}
+            <div style={{ background: 'rgba(15, 23, 42, 0.8)', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-card)' }}>
+              <span style={{ fontSize: '11px', color: 'var(--accent-warning)', textTransform: 'uppercase', fontWeight: 600, display: 'block', marginBottom: '8px' }}>
+                🏥 Medical & Medicare Multipliers (Spreadsheet)
+              </span>
+
+              <div className="input-group">
+                <div className="input-header">
+                  <span>Medicare Start Age</span>
+                  <span className="input-value">Age {inputs.medicareStartAge}</span>
+                </div>
+                <input
+                  type="range"
+                  min={60}
+                  max={72}
+                  step={1}
+                  value={inputs.medicareStartAge}
+                  onChange={(e) => handleChange('medicareStartAge', Number(e.target.value))}
+                />
+              </div>
+
+              <div className="input-group">
+                <div className="input-header">
+                  <span>Medical Multiplier (Retirement pre-Medicare)</span>
+                  <span className="input-value">{inputs.medicalAdjRetirement.toFixed(1)}x</span>
+                </div>
+                <input
+                  type="range"
+                  min={1.0}
+                  max={8.0}
+                  step={0.25}
+                  value={inputs.medicalAdjRetirement}
+                  onChange={(e) => handleChange('medicalAdjRetirement', Number(e.target.value))}
+                />
+              </div>
+
+              <div className="input-group">
+                <div className="input-header">
+                  <span>Medical Multiplier (Post-Medicare)</span>
+                  <span className="input-value">{inputs.medicalAdjMedicare.toFixed(1)}x</span>
+                </div>
+                <input
+                  type="range"
+                  min={1.0}
+                  max={8.0}
+                  step={0.25}
+                  value={inputs.medicalAdjMedicare}
+                  onChange={(e) => handleChange('medicalAdjMedicare', Number(e.target.value))}
+                />
+              </div>
+            </div>
+
+            {/* Senior Expense Reduction Toggle */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span>Reduce Expenses @ Age 75</span>
+              <span>Senior Expense Reduction @ Age 75</span>
               <button
                 onClick={() => handleChange('reduceExpensesAt75', !inputs.reduceExpensesAt75)}
                 style={{ background: 'none', border: 'none', cursor: 'pointer', color: inputs.reduceExpensesAt75 ? 'var(--accent-cyan)' : 'var(--text-dim)' }}
@@ -859,7 +949,7 @@ export const ScenarioControls: React.FC<Props> = ({ inputs, onChange, onReset })
               </button>
             </div>
             <p style={{ fontSize: '11px', color: 'var(--text-dim)' }}>
-              Automatically reduces annual travel by 50% and living expenses by 25% post-75.
+              Automatically scales travel down to the post-75 multiplier ({inputs.travelAdj75}x) and living expenses by 25% post-75.
             </p>
           </div>
         )}
