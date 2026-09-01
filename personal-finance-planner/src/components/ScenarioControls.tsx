@@ -200,9 +200,9 @@ export const ScenarioControls: React.FC<Props> = ({ inputs, onChange, onReset })
           </div>
           <input
             type="range"
-            min={20000}
+            min={0}
             max={500000}
-            step={5000}
+            step={2500}
             value={inputs.annualIncome}
             onChange={(e) => handleChange('annualIncome', Number(e.target.value))}
           />
@@ -259,8 +259,8 @@ export const ScenarioControls: React.FC<Props> = ({ inputs, onChange, onReset })
               <input
                 type="range"
                 min={0}
-                max={500000}
-                step={5000}
+                max={2000000}
+                step={10000}
                 value={inputs.initCash}
                 onChange={(e) => handleChange('initCash', Number(e.target.value))}
               />
@@ -274,7 +274,7 @@ export const ScenarioControls: React.FC<Props> = ({ inputs, onChange, onReset })
               <input
                 type="range"
                 min={0}
-                max={1500000}
+                max={2000000}
                 step={25000}
                 value={inputs.init401k}
                 onChange={(e) => handleChange('init401k', Number(e.target.value))}
@@ -289,8 +289,8 @@ export const ScenarioControls: React.FC<Props> = ({ inputs, onChange, onReset })
               <input
                 type="range"
                 min={0}
-                max={500000}
-                step={5000}
+                max={2000000}
+                step={10000}
                 value={inputs.initRoth}
                 onChange={(e) => handleChange('initRoth', Number(e.target.value))}
               />
@@ -304,7 +304,7 @@ export const ScenarioControls: React.FC<Props> = ({ inputs, onChange, onReset })
               <input
                 type="range"
                 min={0}
-                max={1000000}
+                max={2000000}
                 step={10000}
                 value={inputs.initGrowthInv}
                 onChange={(e) => handleChange('initGrowthInv', Number(e.target.value))}
@@ -319,7 +319,7 @@ export const ScenarioControls: React.FC<Props> = ({ inputs, onChange, onReset })
               <input
                 type="range"
                 min={0}
-                max={500000}
+                max={2000000}
                 step={10000}
                 value={inputs.initBalanceInv}
                 onChange={(e) => handleChange('initBalanceInv', Number(e.target.value))}
