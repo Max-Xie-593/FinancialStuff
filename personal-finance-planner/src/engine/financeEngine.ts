@@ -1,3 +1,5 @@
+import { HISTORICAL_MARKET_DATA } from './marketData';
+
 export interface ExpenseCategories {
   housing: number;
   food: number;
@@ -7,6 +9,8 @@ export interface ExpenseCategories {
   insurance: number;
   misc: number;
 }
+
+export type ReturnRateMode = 'constant' | 'historical_market';
 
 export interface FinancialInputs {
   startAge: number;
@@ -37,6 +41,10 @@ export interface FinancialInputs {
   rateBalance: number;
   rateGrowth: number;
 
+  // Market Return Mode Switch (Default vs. Historical MarketData)
+  returnRateMode: ReturnRateMode;
+  historicalStartYear: number;
+
   // Social Security
   enableSocialSecurity: boolean;
   ssAge: number;
@@ -50,6 +58,11 @@ export interface FinancialInputs {
   rothConvAgeStart: number;
   rothConvAgeEnd: number;
 
+  // Required Minimum Distributions (RMD @ 75)
+  enableRmd: boolean;
+  rmdStartAge: number;
+  rmdRate: number;
+
   // Senior Expense Reduction Switch
   reduceExpensesAt75: boolean;
 
@@ -60,6 +73,9 @@ export interface FinancialInputs {
 export interface YearProjection {
   age: number;
   isRetired: boolean;
+  appliedGrowthRate: number;
+  appliedBalanceRate: number;
+  appliedCashRate: number;
   ssA: number;
   ssB: number;
   earnedIncome: number;
@@ -110,6 +126,8 @@ export const DEFAULT_INPUTS: FinancialInputs = {
   rateIncome: 0.02,
   rateBalance: 0.04,
   rateGrowth: 0.07,
+  returnRateMode: 'constant',
+  historicalStartYear: 1974,
   enableSocialSecurity: true,
   ssAge: 67,
   ssAnnualA: 18000,
@@ -119,6 +137,9 @@ export const DEFAULT_INPUTS: FinancialInputs = {
   rothConvAnnualAmount: 10000,
   rothConvAgeStart: 60,
   rothConvAgeEnd: 70,
+  enableRmd: true,
+  rmdStartAge: 73,
+  rmdRate: 0.15,
   reduceExpensesAt75: true,
   expenseCategories: {
     housing: 24000,
@@ -148,6 +169,19 @@ export function runFinanceProjection(inputs: FinancialInputs): YearProjection[] 
     const age = inputs.startAge + idx;
     const isRetired = age >= inputs.retirementAge;
     const isWorking = !isRetired;
+
+    // Determine annual return rates based on returnRateMode switch
+    let currentRateGrowth = inputs.rateGrowth;
+    let currentRateBalance = inputs.rateBalance;
+    let currentRateIncome = inputs.rateIncome;
+
+    if (inputs.returnRateMode === 'historical_market') {
+      const marketIdx = idx % HISTORICAL_MARKET_DATA.length;
+      const mData = HISTORICAL_MARKET_DATA[marketIdx];
+      currentRateGrowth = mData.growthFund;
+      currentRateBalance = mData.balanceFund;
+      currentRateIncome = mData.savingRate;
+    }
 
     // --- 1. INCOME & EXPENSES ---
     let ssA = 0;
@@ -220,17 +254,20 @@ export function runFinanceProjection(inputs: FinancialInputs): YearProjection[] 
       const prevEdu = projection[idx - 1].edu;
       const prevProp = projection[idx - 1].property;
 
-      const cashVal = prevCash * (1 + inputs.rateIncome);
-      const growthVal = prevGrowth * (1 + inputs.rateGrowth);
-      const balanceVal = prevBalance * (1 + inputs.rateBalance);
+      const cashVal = prevCash * (1 + currentRateIncome);
+      const growthVal = prevGrowth * (1 + currentRateGrowth);
+      const balanceVal = prevBalance * (1 + currentRateBalance);
 
-      const rmdWithdrawal = age >= 72 ? prev401k * 0.04 : 0;
-      k401k = prev401k * (1 + inputs.rateGrowth) + contrib401k + companyMatch - rmdWithdrawal;
+      const rmdWithdrawal = inputs.enableRmd && age >= inputs.rmdStartAge
+        ? prev401k * (1 + currentRateGrowth) * inputs.rmdRate
+        : 0;
 
       const rothConversion = inputs.enableRothConversion && age >= inputs.rothConvAgeStart && age <= inputs.rothConvAgeEnd
         ? inputs.rothConvAnnualAmount
         : 0;
-      roth = prevRoth * (1 + inputs.rateGrowth) + rothContrib + rothConversion;
+
+      k401k = prev401k * (1 + currentRateGrowth) + contrib401k + companyMatch - rmdWithdrawal - rothConversion;
+      roth = prevRoth * (1 + currentRateGrowth) + rothContrib + rothConversion;
 
       edu = prevEdu * 1.03;
       property = prevProp * 1.02;
@@ -261,6 +298,9 @@ export function runFinanceProjection(inputs: FinancialInputs): YearProjection[] 
     projection.push({
       age,
       isRetired,
+      appliedGrowthRate: currentRateGrowth,
+      appliedBalanceRate: currentRateBalance,
+      appliedCashRate: currentRateIncome,
       ssA,
       ssB,
       earnedIncome,

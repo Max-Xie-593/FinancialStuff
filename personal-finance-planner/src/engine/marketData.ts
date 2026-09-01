@@ -1,0 +1,61 @@
+// Historical market returns extracted from MarketData sheet (1974 - 2024)
+export interface MarketYearReturn {
+  year: number;
+  growthFund: number;   // S&P 500 total return
+  balanceFund: number;  // Balanced / Blend (FBALX benchmark)
+  savingRate: number;   // Cash interest / yield
+}
+
+export const HISTORICAL_MARKET_DATA: MarketYearReturn[] = [
+  { year: 1974, growthFund: -0.2972, balanceFund: -0.1680, savingRate: 0.075 },
+  { year: 1975, growthFund: 0.3155, balanceFund: 0.2240, savingRate: 0.058 },
+  { year: 1976, growthFund: 0.1915, balanceFund: 0.1560, savingRate: 0.050 },
+  { year: 1977, growthFund: -0.1150, balanceFund: -0.0420, savingRate: 0.052 },
+  { year: 1978, growthFund: 0.0106, balanceFund: 0.0210, savingRate: 0.072 },
+  { year: 1979, growthFund: 0.1231, balanceFund: 0.0890, savingRate: 0.100 },
+  { year: 1980, growthFund: 0.2577, balanceFund: 0.1650, savingRate: 0.115 },
+  { year: 1981, growthFund: -0.0973, balanceFund: 0.0120, savingRate: 0.140 },
+  { year: 1982, growthFund: 0.1476, balanceFund: 0.1840, savingRate: 0.106 },
+  { year: 1983, growthFund: 0.1727, balanceFund: 0.1250, savingRate: 0.086 },
+  { year: 1984, growthFund: 0.0140, balanceFund: 0.0820, savingRate: 0.095 },
+  { year: 1985, growthFund: 0.2633, balanceFund: 0.2010, savingRate: 0.075 },
+  { year: 1986, growthFund: 0.1462, balanceFund: 0.1540, savingRate: 0.060 },
+  { year: 1987, growthFund: 0.0203, balanceFund: 0.0380, savingRate: 0.058 },
+  { year: 1988, growthFund: 0.1240, balanceFund: 0.0960, savingRate: 0.067 },
+  { year: 1989, growthFund: 0.2725, balanceFund: 0.1980, savingRate: 0.081 },
+  { year: 1990, growthFund: -0.0656, balanceFund: 0.0150, savingRate: 0.075 },
+  { year: 1991, growthFund: 0.2631, balanceFund: 0.2180, savingRate: 0.054 },
+  { year: 1992, growthFund: 0.0446, balanceFund: 0.0620, savingRate: 0.035 },
+  { year: 1993, growthFund: 0.0706, balanceFund: 0.0980, savingRate: 0.030 },
+  { year: 1994, growthFund: -0.0154, balanceFund: -0.0180, savingRate: 0.042 },
+  { year: 1995, growthFund: 0.3411, balanceFund: 0.2450, savingRate: 0.055 },
+  { year: 1996, growthFund: 0.2026, balanceFund: 0.1480, savingRate: 0.050 },
+  { year: 1997, growthFund: 0.3101, balanceFund: 0.2120, savingRate: 0.051 },
+  { year: 1998, growthFund: 0.2667, balanceFund: 0.1760, savingRate: 0.048 },
+  { year: 1999, growthFund: 0.1953, balanceFund: 0.1240, savingRate: 0.047 },
+  { year: 2000, growthFund: -0.1014, balanceFund: 0.0532, savingRate: 0.058 },
+  { year: 2001, growthFund: -0.1304, balanceFund: 0.0225, savingRate: 0.034 },
+  { year: 2002, growthFund: -0.2337, balanceFund: -0.0849, savingRate: 0.016 },
+  { year: 2003, growthFund: 0.2638, balanceFund: 0.2824, savingRate: 0.010 },
+  { year: 2004, growthFund: 0.0899, balanceFund: 0.1094, savingRate: 0.014 },
+  { year: 2005, growthFund: 0.0300, balanceFund: 0.1068, savingRate: 0.031 },
+  { year: 2006, growthFund: 0.1362, balanceFund: 0.1165, savingRate: 0.048 },
+  { year: 2007, growthFund: 0.0353, balanceFund: 0.0899, savingRate: 0.045 },
+  { year: 2008, growthFund: -0.3849, balanceFund: -0.3131, savingRate: 0.018 },
+  { year: 2009, growthFund: 0.2345, balanceFund: 0.2805, savingRate: 0.005 },
+  { year: 2010, growthFund: 0.1278, balanceFund: 0.1376, savingRate: 0.005 },
+  { year: 2011, growthFund: 0.0000, balanceFund: 0.0168, savingRate: 0.005 },
+  { year: 2012, growthFund: 0.1341, balanceFund: 0.1290, savingRate: 0.005 },
+  { year: 2013, growthFund: 0.2960, balanceFund: 0.2050, savingRate: 0.005 },
+  { year: 2014, growthFund: 0.1139, balanceFund: 0.1037, savingRate: 0.005 },
+  { year: 2015, growthFund: -0.0073, balanceFund: 0.0041, savingRate: 0.005 },
+  { year: 2016, growthFund: 0.0954, balanceFund: 0.0701, savingRate: 0.007 },
+  { year: 2017, growthFund: 0.1942, balanceFund: 0.1650, savingRate: 0.011 },
+  { year: 2018, growthFund: -0.0624, balanceFund: -0.0402, savingRate: 0.019 },
+  { year: 2019, growthFund: 0.2888, balanceFund: 0.2439, savingRate: 0.021 },
+  { year: 2020, growthFund: 0.1626, balanceFund: 0.2243, savingRate: 0.005 },
+  { year: 2021, growthFund: 0.2689, balanceFund: 0.1828, savingRate: 0.005 },
+  { year: 2022, growthFund: -0.1944, balanceFund: -0.1819, savingRate: 0.017 },
+  { year: 2023, growthFund: 0.2423, balanceFund: 0.2160, savingRate: 0.050 },
+  { year: 2024, growthFund: 0.2331, balanceFund: 0.1606, savingRate: 0.052 }
+];

@@ -384,51 +384,87 @@ export const ScenarioControls: React.FC<Props> = ({ inputs, onChange, onReset })
         </button>
 
         {openSection.rates && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px' }}>
-            <div className="input-group">
-              <div className="input-header">
-                <span>Growth Investments ROI</span>
-                <span className="input-value">{(inputs.rateGrowth * 100).toFixed(1)}%</span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '10px' }}>
+            {/* Return Rate Mode Switch */}
+            <div style={{ background: 'rgba(15, 23, 42, 0.8)', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-card)' }}>
+              <span style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600, display: 'block', marginBottom: '6px' }}>
+                Return Rate Mode (Spreadsheet Switch)
+              </span>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px' }}>
+                <button
+                  type="button"
+                  className={`tab-btn ${inputs.returnRateMode === 'constant' ? 'active' : ''}`}
+                  onClick={() => handleChange('returnRateMode', 'constant')}
+                  style={{ fontSize: '11px', padding: '6px', justifyContent: 'center' }}
+                >
+                  Constant Assumed %
+                </button>
+                <button
+                  type="button"
+                  className={`tab-btn ${inputs.returnRateMode === 'historical_market' ? 'active' : ''}`}
+                  onClick={() => handleChange('returnRateMode', 'historical_market')}
+                  style={{ fontSize: '11px', padding: '6px', justifyContent: 'center' }}
+                >
+                  Historical MarketData
+                </button>
               </div>
-              <input
-                type="range"
-                min={0.02}
-                max={0.15}
-                step={0.005}
-                value={inputs.rateGrowth}
-                onChange={(e) => handleChange('rateGrowth', Number(e.target.value))}
-              />
             </div>
 
-            <div className="input-group">
-              <div className="input-header">
-                <span>Balanced Investments ROI</span>
-                <span className="input-value">{(inputs.rateBalance * 100).toFixed(1)}%</span>
+            {inputs.returnRateMode === 'historical_market' ? (
+              <div style={{ background: 'rgba(59, 130, 246, 0.1)', padding: '10px 12px', borderRadius: '8px', border: '1px solid rgba(59, 130, 246, 0.25)', fontSize: '12px', color: 'var(--text-main)', lineHeight: 1.5 }}>
+                <strong style={{ color: 'var(--accent-cyan)' }}>📊 Replaying 1974–2024 Market Data:</strong>
+                <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
+                  Simulating year-by-year real S&P 500 & FBALX volatility (1974 bear market, dot-com crash, 2008 crisis, 2020 covid, 2022 drawdown, and bull runs).
+                </p>
               </div>
-              <input
-                type="range"
-                min={0.01}
-                max={0.10}
-                step={0.005}
-                value={inputs.rateBalance}
-                onChange={(e) => handleChange('rateBalance', Number(e.target.value))}
-              />
-            </div>
+            ) : (
+              <>
+                <div className="input-group">
+                  <div className="input-header">
+                    <span>Growth Investments ROI</span>
+                    <span className="input-value">{(inputs.rateGrowth * 100).toFixed(1)}%</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={0.02}
+                    max={0.15}
+                    step={0.005}
+                    value={inputs.rateGrowth}
+                    onChange={(e) => handleChange('rateGrowth', Number(e.target.value))}
+                  />
+                </div>
 
-            <div className="input-group">
-              <div className="input-header">
-                <span>Cash Savings Yield</span>
-                <span className="input-value">{(inputs.rateIncome * 100).toFixed(1)}%</span>
-              </div>
-              <input
-                type="range"
-                min={0.0}
-                max={0.07}
-                step={0.005}
-                value={inputs.rateIncome}
-                onChange={(e) => handleChange('rateIncome', Number(e.target.value))}
-              />
-            </div>
+                <div className="input-group">
+                  <div className="input-header">
+                    <span>Balanced Investments ROI</span>
+                    <span className="input-value">{(inputs.rateBalance * 100).toFixed(1)}%</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={0.01}
+                    max={0.10}
+                    step={0.005}
+                    value={inputs.rateBalance}
+                    onChange={(e) => handleChange('rateBalance', Number(e.target.value))}
+                  />
+                </div>
+
+                <div className="input-group">
+                  <div className="input-header">
+                    <span>Cash Savings Yield</span>
+                    <span className="input-value">{(inputs.rateIncome * 100).toFixed(1)}%</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={0.0}
+                    max={0.07}
+                    step={0.005}
+                    value={inputs.rateIncome}
+                    onChange={(e) => handleChange('rateIncome', Number(e.target.value))}
+                  />
+                </div>
+              </>
+            )}
 
             <div className="input-group">
               <div className="input-header">
@@ -648,6 +684,51 @@ export const ScenarioControls: React.FC<Props> = ({ inputs, onChange, onReset })
                     step={1}
                     value={inputs.rothConvAgeEnd}
                     onChange={(e) => handleChange('rothConvAgeEnd', Number(e.target.value))}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Required Minimum Distributions (RMD @ 75) */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '6px' }}>
+              <span>Required Minimum Distributions (RMD)</span>
+              <button
+                onClick={() => handleChange('enableRmd', !inputs.enableRmd)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: inputs.enableRmd ? 'var(--accent-primary)' : 'var(--text-dim)' }}
+              >
+                {inputs.enableRmd ? <ToggleRight size={26} /> : <ToggleLeft size={26} />}
+              </button>
+            </div>
+
+            {inputs.enableRmd && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', paddingLeft: '8px', borderLeft: '2px solid var(--accent-primary)' }}>
+                <div className="input-group">
+                  <div className="input-header">
+                    <span>RMD Start Age</span>
+                    <span className="input-value">Age {inputs.rmdStartAge}</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={60}
+                    max={75}
+                    step={1}
+                    value={inputs.rmdStartAge}
+                    onChange={(e) => handleChange('rmdStartAge', Number(e.target.value))}
+                  />
+                </div>
+
+                <div className="input-group">
+                  <div className="input-header">
+                    <span>RMD Rate @ 75yr (%)</span>
+                    <span className="input-value">{(inputs.rmdRate * 100).toFixed(1)}%</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={0.01}
+                    max={0.25}
+                    step={0.005}
+                    value={inputs.rmdRate}
+                    onChange={(e) => handleChange('rmdRate', Number(e.target.value))}
                   />
                 </div>
               </div>
