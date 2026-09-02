@@ -12,18 +12,20 @@ export const YearlyLedger: React.FC<Props> = ({ projections }) => {
 
   const filtered = projections.filter((p) => {
     if (!searchAge) return true;
-    return p.age.toString().includes(searchAge);
+    return p.age.toString().includes(searchAge) || (p.marketYear && p.marketYear.toString().includes(searchAge));
   });
 
   const formatCurrency = (val: number) =>
     new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(val);
 
   const hasOtherAssets = projections.some((p) => p.edu > 0 || p.property > 0);
+  const hasMarketYear = projections.some((p) => p.marketYear !== undefined);
 
   const exportCSV = () => {
     const headers = [
       'Age',
       'Status',
+      ...(hasMarketYear ? ['Market Year', 'Applied S&P Return', 'Applied Balanced Return'] : []),
       'Earned Income',
       'Social Security',
       'Total Income',
@@ -42,6 +44,13 @@ export const YearlyLedger: React.FC<Props> = ({ projections }) => {
     const rows = projections.map((p) => [
       p.age,
       p.isRetired ? 'Retired' : 'Working',
+      ...(hasMarketYear
+        ? [
+            p.marketYear || '',
+            `${(p.appliedGrowthRate * 100).toFixed(1)}%`,
+            `${(p.appliedBalanceRate * 100).toFixed(1)}%`,
+          ]
+        : []),
       p.earnedIncome.toFixed(0),
       (p.ssA + p.ssB).toFixed(0),
       p.totalIncome.toFixed(0),
@@ -100,7 +109,7 @@ export const YearlyLedger: React.FC<Props> = ({ projections }) => {
             <Search size={13} color="var(--text-muted)" style={{ position: 'absolute', left: '10px' }} />
             <input
               type="text"
-              placeholder="Search age..."
+              placeholder="Search age or year..."
               value={searchAge}
               onChange={(e) => setSearchAge(e.target.value)}
               style={{
@@ -154,6 +163,11 @@ export const YearlyLedger: React.FC<Props> = ({ projections }) => {
             <li>
               <strong>Year 1 (Starting Age):</strong> Displays your starting asset basis. The <em>Net Flow</em> (+$24,975) earned during this year compounds into your Cash & Investments starting in Year 2 (Age 41).
             </li>
+            {hasMarketYear && (
+              <li>
+                <strong>Market Year:</strong> Shows which historical calendar year's market returns (S&P 500 & FBALX) were applied to that year of your life.
+              </li>
+            )}
           </ul>
         </div>
       )}
@@ -164,6 +178,7 @@ export const YearlyLedger: React.FC<Props> = ({ projections }) => {
             <tr>
               <th style={{ width: '45px' }}>Age</th>
               <th style={{ width: '55px' }}>Status</th>
+              {hasMarketYear && <th style={{ textAlign: 'center', width: '75px' }}>Mkt Year</th>}
               <th>Income</th>
               <th>Taxes</th>
               <th>Expenses</th>
@@ -187,6 +202,23 @@ export const YearlyLedger: React.FC<Props> = ({ projections }) => {
                     {p.isRetired ? 'Retire' : 'Work'}
                   </span>
                 </td>
+                {hasMarketYear && (
+                  <td style={{ textAlign: 'center' }}>
+                    <span
+                      style={{
+                        fontSize: '11px',
+                        fontWeight: 600,
+                        color: p.appliedGrowthRate >= 0 ? 'var(--accent-cyan)' : 'var(--accent-danger)',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {p.marketYear}{' '}
+                      <span style={{ fontSize: '9.5px', opacity: 0.85 }}>
+                        ({p.appliedGrowthRate >= 0 ? '+' : ''}{(p.appliedGrowthRate * 100).toFixed(0)}%)
+                      </span>
+                    </span>
+                  </td>
+                )}
                 <td style={{ color: 'var(--accent-success)' }}>{formatCurrency(p.totalIncome)}</td>
                 <td style={{ color: 'var(--text-muted)' }}>{formatCurrency(p.incomeTax)}</td>
                 <td style={{ color: 'var(--accent-danger)' }}>{formatCurrency(p.totalExpense)}</td>

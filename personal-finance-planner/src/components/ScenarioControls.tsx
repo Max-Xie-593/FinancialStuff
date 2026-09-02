@@ -411,11 +411,110 @@ export const ScenarioControls: React.FC<Props> = ({ inputs, onChange, onReset })
             </div>
 
             {inputs.returnRateMode === 'historical_market' ? (
-              <div style={{ background: 'rgba(59, 130, 246, 0.1)', padding: '10px 12px', borderRadius: '8px', border: '1px solid rgba(59, 130, 246, 0.25)', fontSize: '12px', color: 'var(--text-main)', lineHeight: 1.5 }}>
-                <strong style={{ color: 'var(--accent-cyan)' }}>📊 Replaying 1974–2024 Market Data:</strong>
-                <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
-                  Simulating year-by-year real S&P 500 & FBALX volatility (1974 bear market, dot-com crash, 2008 crisis, 2020 covid, 2022 drawdown, and bull runs).
-                </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div style={{ background: 'rgba(59, 130, 246, 0.1)', padding: '10px 12px', borderRadius: '8px', border: '1px solid rgba(59, 130, 246, 0.25)', fontSize: '12px', color: 'var(--text-main)', lineHeight: 1.5 }}>
+                  <strong style={{ color: 'var(--accent-cyan)', display: 'block', marginBottom: '2px' }}>
+                    🔄 Cycling {Math.abs((inputs.historicalEndYear || 2024) - (inputs.historicalStartYear || 1974)) + 1}-Year Market Window
+                  </strong>
+                  <p style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                    Replaying <strong>{Math.min(inputs.historicalStartYear || 1974, inputs.historicalEndYear || 2024)} – {Math.max(inputs.historicalStartYear || 1974, inputs.historicalEndYear || 2024)}</strong> repeatedly on a loop across your lifetime projection.
+                  </p>
+                </div>
+
+                {/* Quick Presets */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <span style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>
+                    Historical Regime Presets:
+                  </span>
+                  <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                    <button
+                      type="button"
+                      className="tab-btn"
+                      onClick={() => {
+                        handleChange('historicalStartYear', 1974);
+                        handleChange('historicalEndYear', 2024);
+                      }}
+                      style={{ fontSize: '10px', padding: '4px 8px', background: inputs.historicalStartYear === 1974 && inputs.historicalEndYear === 2024 ? 'var(--accent-primary)' : 'rgba(255,255,255,0.06)' }}
+                    >
+                      Full 1974–2024
+                    </button>
+                    <button
+                      type="button"
+                      className="tab-btn"
+                      onClick={() => {
+                        handleChange('historicalStartYear', 2000);
+                        handleChange('historicalEndYear', 2010);
+                      }}
+                      style={{ fontSize: '10px', padding: '4px 8px', background: inputs.historicalStartYear === 2000 && inputs.historicalEndYear === 2010 ? 'var(--accent-primary)' : 'rgba(255,255,255,0.06)' }}
+                    >
+                      Lost Decade (2000–10)
+                    </button>
+                    <button
+                      type="button"
+                      className="tab-btn"
+                      onClick={() => {
+                        handleChange('historicalStartYear', 2009);
+                        handleChange('historicalEndYear', 2021);
+                      }}
+                      style={{ fontSize: '10px', padding: '4px 8px', background: inputs.historicalStartYear === 2009 && inputs.historicalEndYear === 2021 ? 'var(--accent-primary)' : 'rgba(255,255,255,0.06)' }}
+                    >
+                      Bull Run (2009–21)
+                    </button>
+                    <button
+                      type="button"
+                      className="tab-btn"
+                      onClick={() => {
+                        handleChange('historicalStartYear', 1974);
+                        handleChange('historicalEndYear', 1982);
+                      }}
+                      style={{ fontSize: '10px', padding: '4px 8px', background: inputs.historicalStartYear === 1974 && inputs.historicalEndYear === 1982 ? 'var(--accent-primary)' : 'rgba(255,255,255,0.06)' }}
+                    >
+                      Stagflation (1974–82)
+                    </button>
+                    <button
+                      type="button"
+                      className="tab-btn"
+                      onClick={() => {
+                        handleChange('historicalStartYear', 2020);
+                        handleChange('historicalEndYear', 2024);
+                      }}
+                      style={{ fontSize: '10px', padding: '4px 8px', background: inputs.historicalStartYear === 2020 && inputs.historicalEndYear === 2024 ? 'var(--accent-primary)' : 'rgba(255,255,255,0.06)' }}
+                    >
+                      2020–24 Volatility
+                    </button>
+                  </div>
+                </div>
+
+                {/* Custom Start / End Year Sliders */}
+                <div className="input-group">
+                  <div className="input-header">
+                    <span>Cycle Start Year</span>
+                    <span className="input-value">{inputs.historicalStartYear || 1974}</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={1974}
+                    max={2024}
+                    step={1}
+                    value={inputs.historicalStartYear || 1974}
+                    onChange={(e) => handleChange('historicalStartYear', Number(e.target.value))}
+                  />
+                </div>
+
+                <div className="input-group">
+                  <div className="input-header">
+                    <span>Cycle End Year</span>
+                    <span className="input-value">{inputs.historicalEndYear || 2024}</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={1974}
+                    max={2024}
+                    step={1}
+                    value={inputs.historicalEndYear || 2024}
+                    onChange={(e) => handleChange('historicalEndYear', Number(e.target.value))}
+                  />
+                </div>
               </div>
             ) : (
               <>
@@ -650,7 +749,7 @@ export const ScenarioControls: React.FC<Props> = ({ inputs, onChange, onReset })
                   <input
                     type="range"
                     min={2000}
-                    max={50000}
+                    max={100000}
                     step={1000}
                     value={inputs.rothConvAnnualAmount}
                     onChange={(e) => handleChange('rothConvAnnualAmount', Number(e.target.value))}

@@ -54,6 +54,7 @@ export interface FinancialInputs {
   // Market Return Mode Switch (Default vs. Historical MarketData)
   returnRateMode: ReturnRateMode;
   historicalStartYear: number;
+  historicalEndYear: number;
 
   // Social Security
   enableSocialSecurity: boolean;
@@ -83,6 +84,7 @@ export interface FinancialInputs {
 export interface YearProjection {
   age: number;
   isRetired: boolean;
+  marketYear?: number;
   appliedGrowthRate: number;
   appliedBalanceRate: number;
   appliedCashRate: number;
@@ -143,6 +145,7 @@ export const DEFAULT_INPUTS: FinancialInputs = {
   rateGrowth: 0.07,
   returnRateMode: 'constant',
   historicalStartYear: 1974,
+  historicalEndYear: 2024,
   enableSocialSecurity: true,
   ssAge: 67,
   ssAnnualA: 18000,
@@ -180,6 +183,12 @@ export function runFinanceProjection(inputs: FinancialInputs): YearProjection[] 
 
   const totalYears = 101 - inputs.startAge;
 
+  // Filter historical subset based on user selected start/end range
+  const startY = Math.min(inputs.historicalStartYear || 1974, inputs.historicalEndYear || 2024);
+  const endY = Math.max(inputs.historicalStartYear || 1974, inputs.historicalEndYear || 2024);
+  const marketSubset = HISTORICAL_MARKET_DATA.filter((m) => m.year >= startY && m.year <= endY);
+  const marketPool = marketSubset.length > 0 ? marketSubset : HISTORICAL_MARKET_DATA;
+
   for (let idx = 0; idx < totalYears; idx++) {
     const age = inputs.startAge + idx;
     const isRetired = age >= inputs.retirementAge;
@@ -189,13 +198,14 @@ export function runFinanceProjection(inputs: FinancialInputs): YearProjection[] 
     let currentRateGrowth = inputs.rateGrowth;
     let currentRateBalance = inputs.rateBalance;
     let currentRateIncome = inputs.rateIncome;
+    let marketYear: number | undefined = undefined;
 
     if (inputs.returnRateMode === 'historical_market') {
-      const marketIdx = idx % HISTORICAL_MARKET_DATA.length;
-      const mData = HISTORICAL_MARKET_DATA[marketIdx];
+      const mData = marketPool[idx % marketPool.length];
       currentRateGrowth = mData.growthFund;
       currentRateBalance = mData.balanceFund;
       currentRateIncome = mData.savingRate;
+      marketYear = mData.year;
     }
 
     // --- 1. INCOME & EXPENSES ---
@@ -330,6 +340,7 @@ export function runFinanceProjection(inputs: FinancialInputs): YearProjection[] 
     projection.push({
       age,
       isRetired,
+      marketYear,
       appliedGrowthRate: currentRateGrowth,
       appliedBalanceRate: currentRateBalance,
       appliedCashRate: currentRateIncome,
