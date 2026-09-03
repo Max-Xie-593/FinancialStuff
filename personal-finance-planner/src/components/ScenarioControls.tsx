@@ -53,6 +53,51 @@ export const ScenarioControls: React.FC<Props> = ({ inputs, onChange, onReset })
       updated.retirementAge = Math.min(80, value + 1);
     }
 
+    // Ensure historicalStartYear does not exceed historicalEndYear
+    if (key === 'historicalStartYear' && updated.historicalEndYear < value) {
+      updated.historicalEndYear = value;
+    }
+
+    // Ensure historicalEndYear is not less than historicalStartYear
+    if (key === 'historicalEndYear' && updated.historicalStartYear > value) {
+      updated.historicalStartYear = value;
+    }
+
+    // Ensure rothConvAgeStart does not exceed rothConvAgeEnd
+    if (key === 'rothConvAgeStart' && updated.rothConvAgeEnd < value) {
+      updated.rothConvAgeEnd = value;
+    }
+
+    // Ensure rothConvAgeEnd is not less than rothConvAgeStart
+    if (key === 'rothConvAgeEnd' && updated.rothConvAgeStart > value) {
+      updated.rothConvAgeStart = value;
+    }
+
+    onChange(updated);
+  };
+
+  const handleMultipleChanges = (updates: Partial<FinancialInputs>) => {
+    const updated = {
+      ...inputs,
+      ...updates,
+    };
+
+    if (
+      updated.historicalStartYear !== undefined &&
+      updated.historicalEndYear !== undefined &&
+      updated.historicalStartYear > updated.historicalEndYear
+    ) {
+      updated.historicalEndYear = updated.historicalStartYear;
+    }
+
+    if (
+      updated.rothConvAgeStart !== undefined &&
+      updated.rothConvAgeEnd !== undefined &&
+      updated.rothConvAgeStart > updated.rothConvAgeEnd
+    ) {
+      updated.rothConvAgeEnd = updated.rothConvAgeStart;
+    }
+
     onChange(updated);
   };
 
@@ -431,8 +476,10 @@ export const ScenarioControls: React.FC<Props> = ({ inputs, onChange, onReset })
                       type="button"
                       className="tab-btn"
                       onClick={() => {
-                        handleChange('historicalStartYear', 1974);
-                        handleChange('historicalEndYear', 2024);
+                        handleMultipleChanges({
+                          historicalStartYear: 1974,
+                          historicalEndYear: 2024,
+                        });
                       }}
                       style={{ fontSize: '10px', padding: '4px 8px', background: inputs.historicalStartYear === 1974 && inputs.historicalEndYear === 2024 ? 'var(--accent-primary)' : 'rgba(255,255,255,0.06)' }}
                     >
@@ -442,8 +489,10 @@ export const ScenarioControls: React.FC<Props> = ({ inputs, onChange, onReset })
                       type="button"
                       className="tab-btn"
                       onClick={() => {
-                        handleChange('historicalStartYear', 2000);
-                        handleChange('historicalEndYear', 2010);
+                        handleMultipleChanges({
+                          historicalStartYear: 2000,
+                          historicalEndYear: 2010,
+                        });
                       }}
                       style={{ fontSize: '10px', padding: '4px 8px', background: inputs.historicalStartYear === 2000 && inputs.historicalEndYear === 2010 ? 'var(--accent-primary)' : 'rgba(255,255,255,0.06)' }}
                     >
@@ -453,8 +502,10 @@ export const ScenarioControls: React.FC<Props> = ({ inputs, onChange, onReset })
                       type="button"
                       className="tab-btn"
                       onClick={() => {
-                        handleChange('historicalStartYear', 2009);
-                        handleChange('historicalEndYear', 2021);
+                        handleMultipleChanges({
+                          historicalStartYear: 2009,
+                          historicalEndYear: 2021,
+                        });
                       }}
                       style={{ fontSize: '10px', padding: '4px 8px', background: inputs.historicalStartYear === 2009 && inputs.historicalEndYear === 2021 ? 'var(--accent-primary)' : 'rgba(255,255,255,0.06)' }}
                     >
@@ -464,8 +515,10 @@ export const ScenarioControls: React.FC<Props> = ({ inputs, onChange, onReset })
                       type="button"
                       className="tab-btn"
                       onClick={() => {
-                        handleChange('historicalStartYear', 1974);
-                        handleChange('historicalEndYear', 1982);
+                        handleMultipleChanges({
+                          historicalStartYear: 1974,
+                          historicalEndYear: 1982,
+                        });
                       }}
                       style={{ fontSize: '10px', padding: '4px 8px', background: inputs.historicalStartYear === 1974 && inputs.historicalEndYear === 1982 ? 'var(--accent-primary)' : 'rgba(255,255,255,0.06)' }}
                     >
@@ -475,8 +528,10 @@ export const ScenarioControls: React.FC<Props> = ({ inputs, onChange, onReset })
                       type="button"
                       className="tab-btn"
                       onClick={() => {
-                        handleChange('historicalStartYear', 2020);
-                        handleChange('historicalEndYear', 2024);
+                        handleMultipleChanges({
+                          historicalStartYear: 2020,
+                          historicalEndYear: 2024,
+                        });
                       }}
                       style={{ fontSize: '10px', padding: '4px 8px', background: inputs.historicalStartYear === 2020 && inputs.historicalEndYear === 2024 ? 'var(--accent-primary)' : 'rgba(255,255,255,0.06)' }}
                     >
@@ -494,7 +549,7 @@ export const ScenarioControls: React.FC<Props> = ({ inputs, onChange, onReset })
                   <input
                     type="range"
                     min={1974}
-                    max={2024}
+                    max={inputs.historicalEndYear || 2024}
                     step={1}
                     value={inputs.historicalStartYear || 1974}
                     onChange={(e) => handleChange('historicalStartYear', Number(e.target.value))}
@@ -508,7 +563,7 @@ export const ScenarioControls: React.FC<Props> = ({ inputs, onChange, onReset })
                   </div>
                   <input
                     type="range"
-                    min={1974}
+                    min={inputs.historicalStartYear || 1974}
                     max={2024}
                     step={1}
                     value={inputs.historicalEndYear || 2024}
@@ -749,7 +804,7 @@ export const ScenarioControls: React.FC<Props> = ({ inputs, onChange, onReset })
                   <input
                     type="range"
                     min={2000}
-                    max={100000}
+                    max={150000}
                     step={1000}
                     value={inputs.rothConvAnnualAmount}
                     onChange={(e) => handleChange('rothConvAnnualAmount', Number(e.target.value))}
@@ -763,8 +818,8 @@ export const ScenarioControls: React.FC<Props> = ({ inputs, onChange, onReset })
                   </div>
                   <input
                     type="range"
-                    min={50}
-                    max={75}
+                    min={Math.min(inputs.startAge || 40, 50)}
+                    max={inputs.rothConvAgeEnd || 70}
                     step={1}
                     value={inputs.rothConvAgeStart}
                     onChange={(e) => handleChange('rothConvAgeStart', Number(e.target.value))}
@@ -778,7 +833,7 @@ export const ScenarioControls: React.FC<Props> = ({ inputs, onChange, onReset })
                   </div>
                   <input
                     type="range"
-                    min={Math.max(inputs.rothConvAgeStart + 1, 55)}
+                    min={inputs.rothConvAgeStart || 50}
                     max={85}
                     step={1}
                     value={inputs.rothConvAgeEnd}
