@@ -25,7 +25,14 @@ export const YearlyLedger: React.FC<Props> = ({ projections }) => {
     const headers = [
       'Age',
       'Status',
-      ...(hasMarketYear ? ['Market Year', 'Applied S&P Return', 'Applied Balanced Return'] : []),
+      ...(hasMarketYear
+        ? [
+            'Market Year',
+            'Applied S&P (Growth/401k/Roth)',
+            'Applied FBALX (Balanced)',
+            'Applied Cash Yield',
+          ]
+        : []),
       'Earned Income',
       'Social Security',
       'Total Income',
@@ -36,7 +43,8 @@ export const YearlyLedger: React.FC<Props> = ({ projections }) => {
       'Cash Savings',
       'Growth Inv',
       'Balanced Inv',
-      '401k / IRA',
+      '401(k)',
+      'Roth IRA',
       'Other Assets (Property/Edu)',
       'Total Net Assets',
     ];
@@ -49,6 +57,7 @@ export const YearlyLedger: React.FC<Props> = ({ projections }) => {
             p.marketYear || '',
             `${(p.appliedGrowthRate * 100).toFixed(1)}%`,
             `${(p.appliedBalanceRate * 100).toFixed(1)}%`,
+            `${(p.appliedCashRate * 100).toFixed(1)}%`,
           ]
         : []),
       p.earnedIncome.toFixed(0),
@@ -61,7 +70,8 @@ export const YearlyLedger: React.FC<Props> = ({ projections }) => {
       p.cash.toFixed(0),
       p.growthInv.toFixed(0),
       p.balanceInv.toFixed(0),
-      (p.k401k + p.roth).toFixed(0),
+      p.k401k.toFixed(0),
+      p.roth.toFixed(0),
       (p.edu + p.property).toFixed(0),
       p.totalAssets.toFixed(0),
     ]);
@@ -157,7 +167,8 @@ export const YearlyLedger: React.FC<Props> = ({ projections }) => {
               <strong>Total Net Assets</strong> = <span style={{ color: '#fff' }}>Cash</span> +{' '}
               <span style={{ color: '#fff' }}>Growth</span> +{' '}
               <span style={{ color: '#fff' }}>Balanced</span> +{' '}
-              <span style={{ color: '#fff' }}>401(k) / Roth</span>
+              <span style={{ color: '#fff' }}>401(k)</span> +{' '}
+              <span style={{ color: '#fff' }}>Roth IRA</span>
               {hasOtherAssets ? ' + Other Assets (Property/Edu)' : ''}.
             </li>
             <li>
@@ -165,7 +176,7 @@ export const YearlyLedger: React.FC<Props> = ({ projections }) => {
             </li>
             {hasMarketYear && (
               <li>
-                <strong>Market Year:</strong> Shows which historical calendar year's market returns (S&P 500 & FBALX) were applied to that year of your life.
+                <strong>Market Rates Visibility:</strong> Each asset column displays the exact historical return applied for that calendar year (S&P 500 on Growth/401k/Roth, FBALX on Balanced, and cash yield on Cash).
               </li>
             )}
           </ul>
@@ -178,7 +189,7 @@ export const YearlyLedger: React.FC<Props> = ({ projections }) => {
             <tr>
               <th style={{ width: '45px' }}>Age</th>
               <th style={{ width: '55px' }}>Status</th>
-              {hasMarketYear && <th style={{ textAlign: 'center', width: '75px' }}>Mkt Year</th>}
+              {hasMarketYear && <th style={{ textAlign: 'center', width: '65px' }}>Mkt Year</th>}
               <th>Income</th>
               <th>Taxes</th>
               <th>Expenses</th>
@@ -186,7 +197,8 @@ export const YearlyLedger: React.FC<Props> = ({ projections }) => {
               <th>Cash</th>
               <th>Growth</th>
               <th>Balanced</th>
-              <th>401(k)/Roth</th>
+              <th>401(k)</th>
+              <th>Roth IRA</th>
               {hasOtherAssets && <th>Other Assets</th>}
               <th style={{ color: 'var(--accent-primary)', background: 'rgba(59, 130, 246, 0.15)' }}>
                 Total Assets
@@ -207,15 +219,15 @@ export const YearlyLedger: React.FC<Props> = ({ projections }) => {
                     <span
                       style={{
                         fontSize: '11px',
-                        fontWeight: 600,
-                        color: p.appliedGrowthRate >= 0 ? 'var(--accent-cyan)' : 'var(--accent-danger)',
+                        fontWeight: 700,
+                        color: 'var(--accent-cyan)',
+                        padding: '2px 5px',
+                        borderRadius: '4px',
+                        background: 'rgba(6, 182, 212, 0.12)',
                         whiteSpace: 'nowrap',
                       }}
                     >
-                      {p.marketYear}{' '}
-                      <span style={{ fontSize: '9.5px', opacity: 0.85 }}>
-                        ({p.appliedGrowthRate >= 0 ? '+' : ''}{(p.appliedGrowthRate * 100).toFixed(0)}%)
-                      </span>
+                      {p.marketYear}
                     </span>
                   </td>
                 )}
@@ -225,10 +237,46 @@ export const YearlyLedger: React.FC<Props> = ({ projections }) => {
                 <td style={{ fontWeight: 600, color: p.deficit >= 0 ? 'var(--accent-success)' : 'var(--accent-warning)' }}>
                   {p.deficit >= 0 ? `+${formatCurrency(p.deficit)}` : formatCurrency(p.deficit)}
                 </td>
-                <td>{formatCurrency(p.cash)}</td>
-                <td>{formatCurrency(p.growthInv)}</td>
-                <td>{formatCurrency(p.balanceInv)}</td>
-                <td>{formatCurrency(p.k401k + p.roth)}</td>
+                <td>
+                  <div>{formatCurrency(p.cash)}</div>
+                  {hasMarketYear && (
+                    <div style={{ fontSize: '9.5px', color: 'var(--accent-cyan)', opacity: 0.9 }}>
+                      +{(p.appliedCashRate * 100).toFixed(1)}%
+                    </div>
+                  )}
+                </td>
+                <td>
+                  <div>{formatCurrency(p.growthInv)}</div>
+                  {hasMarketYear && (
+                    <div style={{ fontSize: '9.5px', fontWeight: 600, color: p.appliedGrowthRate >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)' }}>
+                      {p.appliedGrowthRate >= 0 ? '+' : ''}{(p.appliedGrowthRate * 100).toFixed(1)}%
+                    </div>
+                  )}
+                </td>
+                <td>
+                  <div>{formatCurrency(p.balanceInv)}</div>
+                  {hasMarketYear && (
+                    <div style={{ fontSize: '9.5px', fontWeight: 600, color: p.appliedBalanceRate >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)' }}>
+                      {p.appliedBalanceRate >= 0 ? '+' : ''}{(p.appliedBalanceRate * 100).toFixed(1)}%
+                    </div>
+                  )}
+                </td>
+                <td>
+                  <div>{formatCurrency(p.k401k)}</div>
+                  {hasMarketYear && (
+                    <div style={{ fontSize: '9.5px', fontWeight: 600, color: p.appliedGrowthRate >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)' }}>
+                      {p.appliedGrowthRate >= 0 ? '+' : ''}{(p.appliedGrowthRate * 100).toFixed(1)}%
+                    </div>
+                  )}
+                </td>
+                <td>
+                  <div>{formatCurrency(p.roth)}</div>
+                  {hasMarketYear && (
+                    <div style={{ fontSize: '9.5px', fontWeight: 600, color: p.appliedGrowthRate >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)' }}>
+                      {p.appliedGrowthRate >= 0 ? '+' : ''}{(p.appliedGrowthRate * 100).toFixed(1)}%
+                    </div>
+                  )}
+                </td>
                 {hasOtherAssets && <td>{formatCurrency(p.edu + p.property)}</td>}
                 <td style={{ fontWeight: 700, color: 'var(--accent-primary)', background: 'rgba(59, 130, 246, 0.08)' }}>
                   {formatCurrency(p.totalAssets)}

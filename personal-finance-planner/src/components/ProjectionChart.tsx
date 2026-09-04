@@ -96,7 +96,7 @@ export const ProjectionChart: React.FC<Props> = ({ projections, retirementAge })
                 const yrData = projections.find((p) => p.age === Number(label));
                 const status = Number(label) >= retirementAge ? '(Retired)' : '(Working)';
                 const marketInfo = yrData?.marketYear
-                  ? ` • Year ${yrData.marketYear} (S&P: ${(yrData.appliedGrowthRate * 100).toFixed(1)}%)`
+                  ? ` • Year ${yrData.marketYear} [S&P: ${(yrData.appliedGrowthRate * 100).toFixed(1)}% | Bal: ${(yrData.appliedBalanceRate * 100).toFixed(1)}% | Cash: ${(yrData.appliedCashRate * 100).toFixed(1)}%]`
                   : '';
                 return `Age ${label} ${status}${marketInfo}`;
               }}
@@ -126,13 +126,13 @@ export const ProjectionChart: React.FC<Props> = ({ projections, retirementAge })
             <span style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
               Scrub Age:
             </span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
               <span style={{ fontWeight: 700, color: 'var(--accent-cyan)', whiteSpace: 'nowrap' }}>
                 Age {currentSelectedAge} {activeYearData.isRetired ? '(Retired)' : '(Working)'}
               </span>
               {activeYearData.marketYear && (
-                <span style={{ padding: '2px 6px', borderRadius: '4px', background: 'rgba(59, 130, 246, 0.2)', color: 'var(--accent-cyan)', fontSize: '11px', fontWeight: 600 }}>
-                  📅 Year {activeYearData.marketYear} (S&P: {(activeYearData.appliedGrowthRate * 100).toFixed(1)}%)
+                <span style={{ padding: '2px 8px', borderRadius: '4px', background: 'rgba(59, 130, 246, 0.2)', color: 'var(--accent-cyan)', fontSize: '11px', fontWeight: 600 }}>
+                  📅 Year {activeYearData.marketYear} (S&P: {(activeYearData.appliedGrowthRate * 100).toFixed(1)}% | Bal: {(activeYearData.appliedBalanceRate * 100).toFixed(1)}% | Cash: {(activeYearData.appliedCashRate * 100).toFixed(1)}%)
                 </span>
               )}
             </div>
@@ -150,14 +150,32 @@ export const ProjectionChart: React.FC<Props> = ({ projections, retirementAge })
       {/* Single-Year Inspection Grid */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px', width: '100%' }}>
         {activeYearData.marketYear && (
-          <div className="glass-panel" style={{ padding: '10px 12px', border: '1px solid rgba(59, 130, 246, 0.3)' }}>
-            <span style={{ fontSize: '10px', color: 'var(--accent-cyan)', textTransform: 'uppercase', display: 'block', fontWeight: 600 }}>Market Year</span>
-            <p style={{ fontSize: '16px', fontWeight: 700, color: '#fff', whiteSpace: 'nowrap' }}>
-              {activeYearData.marketYear}{' '}
-              <span style={{ fontSize: '12px', color: activeYearData.appliedGrowthRate >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)' }}>
-                ({activeYearData.appliedGrowthRate >= 0 ? '+' : ''}{(activeYearData.appliedGrowthRate * 100).toFixed(1)}%)
+          <div className="glass-panel" style={{ padding: '10px 12px', border: '1px solid rgba(59, 130, 246, 0.35)', gridColumn: 'span 2' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+              <span style={{ fontSize: '10px', color: 'var(--accent-cyan)', textTransform: 'uppercase', fontWeight: 600 }}>
+                📅 Year {activeYearData.marketYear} Applied Market Rates
               </span>
-            </p>
+            </div>
+            <div style={{ display: 'flex', gap: '14px', fontSize: '12px', flexWrap: 'wrap' }}>
+              <div>
+                <span style={{ color: 'var(--text-muted)', fontSize: '10px', display: 'block' }}>S&P 500 (Growth/401k/Roth)</span>
+                <span style={{ fontWeight: 700, fontSize: '13px', color: activeYearData.appliedGrowthRate >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)' }}>
+                  {activeYearData.appliedGrowthRate >= 0 ? '+' : ''}{(activeYearData.appliedGrowthRate * 100).toFixed(1)}%
+                </span>
+              </div>
+              <div>
+                <span style={{ color: 'var(--text-muted)', fontSize: '10px', display: 'block' }}>FBALX (Balanced)</span>
+                <span style={{ fontWeight: 700, fontSize: '13px', color: activeYearData.appliedBalanceRate >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)' }}>
+                  {activeYearData.appliedBalanceRate >= 0 ? '+' : ''}{(activeYearData.appliedBalanceRate * 100).toFixed(1)}%
+                </span>
+              </div>
+              <div>
+                <span style={{ color: 'var(--text-muted)', fontSize: '10px', display: 'block' }}>Cash Interest Yield</span>
+                <span style={{ fontWeight: 700, fontSize: '13px', color: 'var(--accent-cyan)' }}>
+                  {(activeYearData.appliedCashRate * 100).toFixed(1)}%
+                </span>
+              </div>
+            </div>
           </div>
         )}
 
