@@ -15,7 +15,7 @@ export function calculateHoldingMetrics(
   quotes: Record<string, MarketQuote>
 ): HoldingCalculated {
   const quote = quotes[holding.symbol.toUpperCase()];
-  const currentPrice = quote?.price ?? holding.purchasePrice;
+  const currentPrice = (quote?.price && quote.price > 0) ? quote.price : holding.purchasePrice;
   const costBasis = holding.shares * holding.purchasePrice;
   const currentValue = holding.shares * currentPrice;
   const unrealizedGainLoss = currentValue - costBasis;
@@ -25,8 +25,8 @@ export function calculateHoldingMetrics(
   const dayGainLoss = holding.shares * dayChangePerShare;
   const dayGainLossPercent = quote?.changePercent ?? 0;
 
-  const fiftyTwoWeekHigh = quote?.fiftyTwoWeekHigh ?? currentPrice;
-  const fiftyTwoWeekLow = quote?.fiftyTwoWeekLow ?? currentPrice;
+  const fiftyTwoWeekHigh = (quote?.fiftyTwoWeekHigh && quote.fiftyTwoWeekHigh > 0) ? quote.fiftyTwoWeekHigh : currentPrice;
+  const fiftyTwoWeekLow = (quote?.fiftyTwoWeekLow && quote.fiftyTwoWeekLow > 0) ? quote.fiftyTwoWeekLow : currentPrice;
   const percentOf52WkHigh = fiftyTwoWeekHigh > 0 ? (currentPrice / fiftyTwoWeekHigh) * 100 : 100;
 
   return {

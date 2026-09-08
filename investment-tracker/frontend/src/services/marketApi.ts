@@ -48,10 +48,12 @@ export async function fetchMarketQuotes(
     const merged: Record<string, MarketQuote> = { ...cached };
 
     for (const [sym, quote] of Object.entries(fetchedQuotes)) {
-      merged[sym] = {
-        ...quote,
-        isStale: false,
-      };
+      if (quote && quote.price > 0) {
+        merged[sym] = {
+          ...quote,
+          isStale: false,
+        };
+      }
     }
 
     storageService.saveCachedQuotes(merged);
