@@ -1,7 +1,8 @@
 import { MarketQuote } from '../types/investment';
 import { storageService } from './storageService';
 
-const API_BASE = '/api';
+const ENV_API_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace(/\/$/, '') : '';
+const API_BASE = ENV_API_URL ? `${ENV_API_URL}/api` : '/api';
 
 export interface SyncResult {
   quotes: Record<string, MarketQuote>;
@@ -11,7 +12,7 @@ export interface SyncResult {
 
 export async function checkBackendHealth(): Promise<boolean> {
   try {
-    const res = await fetch(`${API_BASE}/health`, { signal: AbortSignal.timeout(2000) });
+    const res = await fetch(`${API_BASE}/health`, { signal: AbortSignal.timeout(4000) });
     if (!res.ok) return false;
     const data = await res.json();
     return data.status === 'ok';
