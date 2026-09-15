@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { PortfolioSummary } from '../engine/portfolioEngine';
 import { TrendingUp, TrendingDown, DollarSign, PieChart, Activity } from 'lucide-react';
 import { AssetCategory } from '../types/investment';
@@ -23,12 +23,33 @@ const CATEGORY_COLORS: Record<AssetCategory, string> = {
   MutualFund: '#f59e0b',  // Amber
 };
 
+const SECTOR_COLORS = [
+  '#3b82f6', // Blue
+  '#10b981', // Emerald
+  '#8b5cf6', // Purple
+  '#06b6d4', // Cyan
+  '#f59e0b', // Amber
+  '#ec4899', // Pink
+  '#f97316', // Orange
+  '#6366f1', // Indigo
+  '#14b8a6', // Teal
+  '#eab308', // Yellow
+  '#64748b', // Slate
+];
+
 export const PortfolioSummaryCards: React.FC<PortfolioSummaryCardsProps> = ({ summary }) => {
+  const [allocationMode, setAllocationMode] = useState<'sector' | 'assetClass'>('sector');
+
   const formatCurrency = (val: number) =>
     new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(val);
 
   const isGain = summary.totalGainLoss >= 0;
   const isDayGain = summary.totalDayGainLoss >= 0;
+
+  // Prepare sector allocation sorted by value descending
+  const sortedSectors = Object.entries(summary.sectorBreakdown || {})
+    .filter(([_, data]) => data.value > 0)
+    .sort((a, b) => b[1].value - a[1].value);
 
   return (
     <div className="summary-cards-grid">
@@ -82,49 +103,103 @@ export const PortfolioSummaryCards: React.FC<PortfolioSummaryCardsProps> = ({ su
         </div>
       </div>
 
-      {/* Asset Allocation Breakdown */}
+      {/* Asset / Sector Allocation Breakdown */}
       <div className="glass-panel stat-card allocation-card">
         <div className="stat-card-header">
-          <span className="stat-card-title">Asset Allocation</span>
-          <div className="stat-icon-wrapper bg-purple-subtle">
-            <PieChart size={18} className="text-purple" />
+          <div className="flex items-center gap-2">
+            <div className="stat-icon-wrapper bg-purple-subtle" style={{ width: '28px', height: '28px' }}>
+              <PieChart size={15} className="text-purple" />
+            </div>
+            <span className="stat-card-title">
+              {allocationMode === 'sector' ? 'Industry / Sector Allocation' : 'Asset Class Allocation'}
+            </span>
+          </div>
+
+          <div className="allocation-mode-switcher">
+            <button
+              type="button"
+              onClick={() => setAllocationMode('sector')}
+              className={`switcher-btn ${allocationMode === 'sector' ? 'switcher-btn-active' : ''}`}
+            >
+              Sectors
+            </button>
+            <button
+              type="button"
+              onClick={() => setAllocationMode('assetClass')}
+              className={`switcher-btn ${allocationMode === 'assetClass' ? 'switcher-btn-active' : ''}`}
+            >
+              Classes
+            </button>
           </div>
         </div>
 
         {/* Multi-Segment Allocation Bar */}
         <div className="allocation-progress-bar">
-          {(Object.keys(summary.categoryBreakdown) as AssetCategory[]).map((cat) => {
-            const catVal = summary.categoryBreakdown[cat].value;
-            const pct = summary.totalCurrentValue > 0 ? (catVal / summary.totalCurrentValue) * 100 : 0;
-            if (pct < 0.5) return null;
-            return (
-              <div
-                key={cat}
-                className="allocation-bar-segment"
-                style={{
-                  width: `${pct}%`,
-                  backgroundColor: CATEGORY_COLORS[cat],
-                }}
-                title={`${CATEGORY_LABELS[cat]}: ${formatCurrency(catVal)} (${pct.toFixed(1)}%)`}
-              />
-            );
-          })}
+          {allocationMode === 'sector' ? (
+            sortedSectors.map(([sectorName, data], idx) => {
+              const pct = summary.totalCurrentValue > 0 ? (data.value / summary.totalCurrentValue) * 100 : 0;
+              if (pct < 0.5) return null;
+              const color = SECTOR_COLORS[idx % SECTOR_COLORS.length];
+              return (
+                <div
+                  key={sectorName}
+                  className="allocation-bar-segment"
+                  style={{
+                    width: `${pct}%`,
+                    backgroundColor: color,
+                  }}
+                  title={`${sectorName}: ${formatCurrency(data.value)} (${pct.toFixed(1)}%)`}
+                />
+              );
+            })
+          ) : (
+            (Object.keys(summary.categoryBreakdown) as AssetCategory[]).map((cat) => {
+              const catVal = summary.categoryBreakdown[cat].value;
+              const pct = summary.totalCurrentValue > 0 ? (catVal / summary.totalCurrentValue) * 100 : 0;
+              if (pct < 0.5) return null;
+              return (
+                <div
+                  key={cat}
+                  className="allocation-bar-segment"
+                  style={{
+                    width: `${pct}%`,
+                    backgroundColor: CATEGORY_COLORS[cat],
+                  }}
+                  title={`${CATEGORY_LABELS[cat]}: ${formatCurrency(catVal)} (${pct.toFixed(1)}%)`}
+                />
+              );
+            })
+          )}
         </div>
 
         {/* Legend */}
         <div className="allocation-legend">
-          {(Object.keys(summary.categoryBreakdown) as AssetCategory[]).map((cat) => {
-            const catVal = summary.categoryBreakdown[cat].value;
-            const pct = summary.totalCurrentValue > 0 ? (catVal / summary.totalCurrentValue) * 100 : 0;
-            if (summary.categoryBreakdown[cat].count === 0) return null;
-            return (
-              <div key={cat} className="allocation-legend-item">
-                <span className="legend-dot" style={{ backgroundColor: CATEGORY_COLORS[cat] }} />
-                <span className="legend-label">{CATEGORY_LABELS[cat]}</span>
-                <span className="legend-pct">{pct.toFixed(1)}%</span>
-              </div>
-            );
-          })}
+          {allocationMode === 'sector' ? (
+            sortedSectors.map(([sectorName, data], idx) => {
+              const pct = summary.totalCurrentValue > 0 ? (data.value / summary.totalCurrentValue) * 100 : 0;
+              const color = SECTOR_COLORS[idx % SECTOR_COLORS.length];
+              return (
+                <div key={sectorName} className="allocation-legend-item" title={`${data.count} position(s)`}>
+                  <span className="legend-dot" style={{ backgroundColor: color }} />
+                  <span className="legend-label">{sectorName}</span>
+                  <span className="legend-pct">{pct.toFixed(1)}%</span>
+                </div>
+              );
+            })
+          ) : (
+            (Object.keys(summary.categoryBreakdown) as AssetCategory[]).map((cat) => {
+              const catVal = summary.categoryBreakdown[cat].value;
+              const pct = summary.totalCurrentValue > 0 ? (catVal / summary.totalCurrentValue) * 100 : 0;
+              if (summary.categoryBreakdown[cat].count === 0) return null;
+              return (
+                <div key={cat} className="allocation-legend-item">
+                  <span className="legend-dot" style={{ backgroundColor: CATEGORY_COLORS[cat] }} />
+                  <span className="legend-label">{CATEGORY_LABELS[cat]}</span>
+                  <span className="legend-pct">{pct.toFixed(1)}%</span>
+                </div>
+              );
+            })
+          )}
         </div>
       </div>
     </div>

@@ -8,6 +8,7 @@ export interface PortfolioSummary {
   totalDayGainLoss: number;
   totalDayGainLossPercent: number;
   categoryBreakdown: Record<AssetCategory, { value: number; costBasis: number; count: number }>;
+  sectorBreakdown: Record<string, { value: number; costBasis: number; count: number }>;
 }
 
 export function calculateHoldingMetrics(
@@ -29,6 +30,9 @@ export function calculateHoldingMetrics(
   const fiftyTwoWeekLow = (quote?.fiftyTwoWeekLow && quote.fiftyTwoWeekLow > 0) ? quote.fiftyTwoWeekLow : currentPrice;
   const percentOf52WkHigh = fiftyTwoWeekHigh > 0 ? (currentPrice / fiftyTwoWeekHigh) * 100 : 100;
 
+  const sector = quote?.sector || (holding.category === 'MutualFund' ? 'Mutual Funds' : holding.category === 'ETF' ? 'ETFs' : 'Other');
+  const industry = quote?.industry || 'Other';
+
   return {
     ...holding,
     currentPrice,
@@ -42,6 +46,8 @@ export function calculateHoldingMetrics(
     fiftyTwoWeekLow,
     percentOf52WkHigh,
     peRatio: quote?.peRatio,
+    sector,
+    industry,
     quoteLastUpdated: quote?.lastUpdated,
     isStale: quote?.isStale,
   };
@@ -60,6 +66,8 @@ export function aggregatePortfolio(holdings: HoldingCalculated[]): PortfolioSumm
     MutualFund: { value: 0, costBasis: 0, count: 0 },
   };
 
+  const sectorBreakdown: Record<string, { value: number; costBasis: number; count: number }> = {};
+
   for (const h of holdings) {
     totalCostBasis += h.costBasis;
     totalCurrentValue += h.currentValue;
@@ -69,6 +77,14 @@ export function aggregatePortfolio(holdings: HoldingCalculated[]): PortfolioSumm
     categoryBreakdown[cat].value += h.currentValue;
     categoryBreakdown[cat].costBasis += h.costBasis;
     categoryBreakdown[cat].count += 1;
+
+    const sec = h.sector || 'Other';
+    if (!sectorBreakdown[sec]) {
+      sectorBreakdown[sec] = { value: 0, costBasis: 0, count: 0 };
+    }
+    sectorBreakdown[sec].value += h.currentValue;
+    sectorBreakdown[sec].costBasis += h.costBasis;
+    sectorBreakdown[sec].count += 1;
   }
 
   const totalGainLoss = totalCurrentValue - totalCostBasis;
@@ -84,5 +100,6 @@ export function aggregatePortfolio(holdings: HoldingCalculated[]): PortfolioSumm
     totalDayGainLoss,
     totalDayGainLossPercent,
     categoryBreakdown,
+    sectorBreakdown,
   };
 }

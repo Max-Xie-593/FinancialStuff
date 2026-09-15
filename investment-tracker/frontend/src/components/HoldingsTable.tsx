@@ -47,7 +47,9 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({
         const q = searchQuery.toLowerCase();
         const symbolMatch = h.symbol.toLowerCase().includes(q);
         const nameMatch = h.name?.toLowerCase().includes(q);
-        if (!symbolMatch && !nameMatch) return false;
+        const sectorMatch = h.sector?.toLowerCase().includes(q);
+        const industryMatch = h.industry?.toLowerCase().includes(q);
+        if (!symbolMatch && !nameMatch && !sectorMatch && !industryMatch) return false;
       }
       return true;
     });
@@ -100,6 +102,7 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({
             <tr>
               <th>Symbol / Asset</th>
               {activeAccountId === 'ALL' && <th>Account</th>}
+              <th>Industry / Sector</th>
               <th>Category</th>
               <th className="text-right">Shares</th>
               <th className="text-right">Purchase Price</th>
@@ -115,7 +118,7 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({
           <tbody>
             {filteredHoldings.length === 0 ? (
               <tr>
-                <td colSpan={activeAccountId === 'ALL' ? 12 : 11} className="empty-table-cell">
+                <td colSpan={activeAccountId === 'ALL' ? 13 : 12} className="empty-table-cell">
                   No investment holdings found matching the filter. Click "Add Position" to record a holding lot.
                 </td>
               </tr>
@@ -143,6 +146,14 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({
                         </span>
                       </td>
                     )}
+
+                    {/* Industry / Sector */}
+                    <td>
+                      <div className="industry-cell">
+                        <span className="industry-name">{h.industry || h.sector || 'General'}</span>
+                        <span className="sector-tag">{h.sector || h.category}</span>
+                      </div>
+                    </td>
 
                     {/* Category */}
                     <td>

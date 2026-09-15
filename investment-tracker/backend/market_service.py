@@ -91,11 +91,15 @@ class MarketService:
                     except Exception as e:
                         print(f"[MarketService] history fallback skipped for {sym}: {e}")
 
-                # Tier 3: optional metadata enrichment from ticker.info (company name, P/E ratio)
+                # Tier 3: optional metadata enrichment from ticker.info (company name, P/E ratio, sector, industry)
+                sector = "Other"
+                industry = "Other"
                 try:
                     info = ticker.info or {}
                     name = info.get("shortName") or info.get("longName") or sym
                     pe_ratio = info.get("trailingPE") or info.get("forwardPE")
+                    sector = info.get("sector") or info.get("category") or ("ETF" if quote_type == "ETF" else ("Mutual Fund" if quote_type == "MUTUALFUND" else "Other"))
+                    industry = info.get("industry") or info.get("fundFamily") or sector
                     if price <= 0.0:
                         price = float(
                             info.get("currentPrice")
@@ -138,6 +142,8 @@ class MarketService:
                     "fiftyTwoWeekHigh": round(float(fifty_two_high), 4),
                     "fiftyTwoWeekLow": round(float(fifty_two_low), 4),
                     "peRatio": round(float(pe_ratio), 2) if pe_ratio else None,
+                    "sector": str(sector),
+                    "industry": str(industry),
                     "quoteType": str(quote_type).upper(),
                     "lastUpdated": datetime.now(timezone.utc).isoformat(),
                     "_cached_at": now,

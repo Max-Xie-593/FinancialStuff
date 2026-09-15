@@ -121,7 +121,7 @@ export const GridSimulator: React.FC<GridSimulatorProps> = ({
             <input
               type="range"
               min={1000}
-              max={50000}
+              max={100000}
               step={1000}
               value={inputs.stepCash}
               onChange={(e) => updateInput('stepCash', parseFloat(e.target.value))}

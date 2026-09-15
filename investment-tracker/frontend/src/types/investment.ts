@@ -30,6 +30,8 @@ export interface MarketQuote {
   fiftyTwoWeekHigh: number;
   fiftyTwoWeekLow: number;
   peRatio?: number | null;
+  sector?: string;
+  industry?: string;
   quoteType?: string;
   lastUpdated: string; // ISO string
   isStale?: boolean;
@@ -47,6 +49,8 @@ export interface HoldingCalculated extends HoldingLot {
   fiftyTwoWeekLow: number;
   percentOf52WkHigh: number;
   peRatio?: number | null;
+  sector?: string;
+  industry?: string;
   quoteLastUpdated?: string;
   isStale?: boolean;
 }
