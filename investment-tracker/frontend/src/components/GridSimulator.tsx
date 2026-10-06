@@ -1,7 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { GridSimInputs } from '../types/investment';
 import { runGridSimulation, DEFAULT_GRID_INPUTS } from '../engine/gridEngine';
-import { Sliders, RotateCcw, TrendingUp, DollarSign, Layers } from 'lucide-react';
+import { Sliders, RotateCcw, TrendingUp, DollarSign, Layers, Download, Upload } from 'lucide-react';
+import { exportGridScenarioToFile, parseAndValidateGridScenarioFile } from '../utils/scenarioIO';
 
 interface GridSimulatorProps {
   initialInputs?: GridSimInputs;
@@ -18,6 +19,27 @@ export const GridSimulator: React.FC<GridSimulatorProps> = ({
     const updated = { ...inputs, [key]: value };
     setInputs(updated);
     onSaveInputs?.(updated);
+  };
+
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const handleExport = () => {
+    const name = window.prompt('Enter scenario name for export:', 'Grid Scenario') || 'Grid Scenario';
+    exportGridScenarioToFile(inputs, name);
+  };
+
+  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const res = await parseAndValidateGridScenarioFile(file);
+      setInputs(res.inputs);
+      onSaveInputs?.(res.inputs);
+    } catch (err: any) {
+      alert(`Import failed: ${err.message}`);
+    } finally {
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
   };
 
   const simulation = useMemo(() => {
@@ -89,14 +111,40 @@ export const GridSimulator: React.FC<GridSimulatorProps> = ({
 
       {/* Scenario Control Panel */}
       <div className="glass-panel p-6">
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
           <h4 className="text-md font-bold text-main flex items-center gap-2">
             <Sliders size={18} className="text-primary" />
             Scenario Parameters
           </h4>
 
-          {/* Quick Preset Buttons */}
-          <div className="flex gap-2">
+          {/* Quick Preset & Export/Import Buttons */}
+          <div className="flex gap-2 items-center flex-wrap">
+            <input
+              type="file"
+              ref={fileInputRef}
+              accept=".json"
+              onChange={handleImportFile}
+              style={{ display: 'none' }}
+            />
+
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="btn btn-secondary btn-sm"
+              title="Import scenario parameters from a JSON preset file"
+            >
+              <Upload size={14} />
+              <span>Import Scenario</span>
+            </button>
+
+            <button
+              onClick={handleExport}
+              className="btn btn-secondary btn-sm"
+              title="Export current scenario parameters to a JSON preset file"
+            >
+              <Download size={14} />
+              <span>Export Scenario</span>
+            </button>
+
             <button
               onClick={() => {
                 setInputs(DEFAULT_GRID_INPUTS);

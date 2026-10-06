@@ -1,5 +1,19 @@
-import React from 'react';
-import { RefreshCw, TrendingUp, Compass, Sliders, Shield, AlertCircle, CheckCircle2 } from 'lucide-react';
+import React, { useRef } from 'react';
+import {
+  RefreshCw,
+  TrendingUp,
+  Compass,
+  Sliders,
+  Shield,
+  AlertCircle,
+  CheckCircle2,
+  User as UserIcon,
+  LogOut,
+  Download,
+  Upload,
+  LogIn,
+} from 'lucide-react';
+import { User } from '../types/auth';
 
 interface HeaderProps {
   activeTab: 'portfolio' | 'watchlist' | 'simulator' | 'accounts';
@@ -9,6 +23,12 @@ interface HeaderProps {
   onRefresh: () => void;
   lastUpdated?: string;
   hasStaleQuotes: boolean;
+  user: User | null;
+  isGuest: boolean;
+  onOpenAuth: () => void;
+  onLogout: () => void;
+  onBackup: () => void;
+  onRestoreFile: (file: File) => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -19,10 +39,32 @@ export const Header: React.FC<HeaderProps> = ({
   onRefresh,
   lastUpdated,
   hasStaleQuotes,
+  user,
+  isGuest,
+  onOpenAuth,
+  onLogout,
+  onBackup,
+  onRestoreFile,
 }) => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const formattedTime = lastUpdated
     ? new Date(lastUpdated).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     : 'Unknown';
+
+  const handleTriggerRestore = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+      fileInputRef.current.click();
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      onRestoreFile(file);
+    }
+  };
 
   return (
     <header className="header-container">
@@ -70,6 +112,68 @@ export const Header: React.FC<HeaderProps> = ({
             <RefreshCw size={16} className={isRefreshing ? 'spin-icon' : ''} />
             <span>{isRefreshing ? 'Updating Quotes...' : 'Refresh Quotes'}</span>
           </button>
+
+          <div className="header-divider" />
+
+          {/* Backup & Restore Buttons */}
+          <div className="header-backup-buttons">
+            <button
+              onClick={onBackup}
+              className="btn btn-secondary btn-sm"
+              title="Export complete portfolio backup file (.json)"
+            >
+              <Download size={14} />
+              <span>Backup</span>
+            </button>
+            <button
+              onClick={handleTriggerRestore}
+              className="btn btn-secondary btn-sm"
+              title="Import and restore portfolio from a backup file (.json)"
+            >
+              <Upload size={14} />
+              <span>Restore</span>
+            </button>
+            <input
+              type="file"
+              ref={fileInputRef}
+              accept=".json"
+              style={{ display: 'none' }}
+              onChange={handleFileChange}
+            />
+          </div>
+
+          <div className="header-divider" />
+
+          {/* User Auth Section */}
+          <div className="header-user-section">
+            {user && !isGuest ? (
+              <div className="user-badge" title={`Signed in as ${user.displayName || user.username}`}>
+                <UserIcon size={14} className="user-icon" />
+                <span className="user-name">{user.displayName || user.username}</span>
+                <button onClick={onLogout} className="btn-icon-subtle" title="Sign Out">
+                  <LogOut size={14} />
+                </button>
+              </div>
+            ) : isGuest ? (
+              <button
+                onClick={onOpenAuth}
+                className="btn btn-secondary btn-sm guest-btn"
+                title="Guest Mode - Click to Sign In or Create an Account"
+              >
+                <UserIcon size={14} />
+                <span>Guest (Sign In)</span>
+              </button>
+            ) : (
+              <button
+                onClick={onOpenAuth}
+                className="btn btn-primary btn-sm"
+                title="Sign in to your account"
+              >
+                <LogIn size={14} />
+                <span>Sign In</span>
+              </button>
+            )}
+          </div>
         </div>
       </div>
 

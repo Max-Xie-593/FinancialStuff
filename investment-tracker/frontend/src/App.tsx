@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Account, HoldingLot, MarketQuote, WatchlistStock, GridSimInputs } from './types/investment';
 import { storageService } from './services/storageService';
+import { authService } from './services/authService';
+import { AuthSession } from './types/auth';
 import { fetchMarketQuotes, checkBackendHealth } from './services/marketApi';
 import { calculateHoldingMetrics, aggregatePortfolio } from './engine/portfolioEngine';
 import { Header } from './components/Header';
@@ -11,21 +13,72 @@ import { AddHoldingModal } from './components/AddHoldingModal';
 import { Watchlist52Wk } from './components/Watchlist52Wk';
 import { GridSimulator } from './components/GridSimulator';
 import { AccountsManager } from './components/AccountsManager';
+import { AuthModal } from './components/AuthModal';
+import { exportFullPortfolioBackup, parseAndValidatePortfolioBackup } from './utils/scenarioIO';
 
 export const App: React.FC = () => {
-  // State from storage service
-  const [accounts, setAccounts] = useState<Account[]>(() => storageService.getAccounts());
-  const [activeAccountId, setActiveAccountId] = useState<string>(() => storageService.getActiveAccountId());
-  const [holdings, setHoldings] = useState<HoldingLot[]>(() => storageService.getHoldings());
-  const [watchlist, setWatchlist] = useState<WatchlistStock[]>(() => storageService.getWatchlist());
+  // Auth state
+  const [session, setSession] = useState<AuthSession | null>(() => authService.getSession());
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+
+  // State from storage service scoped to current user
+  const [accounts, setAccounts] = useState<Account[]>(() => storageService.getAccounts(session?.user?.id));
+  const [activeAccountId, setActiveAccountId] = useState<string>(() => storageService.getActiveAccountId(session?.user?.id));
+  const [holdings, setHoldings] = useState<HoldingLot[]>(() => storageService.getHoldings(session?.user?.id));
+  const [watchlist, setWatchlist] = useState<WatchlistStock[]>(() => storageService.getWatchlist(session?.user?.id));
   const [quotes, setQuotes] = useState<Record<string, MarketQuote>>(() => storageService.getCachedQuotes());
-  const [gridInputs, setGridInputs] = useState<GridSimInputs>(() => storageService.getGridInputs());
+  const [gridInputs, setGridInputs] = useState<GridSimInputs>(() => storageService.getGridInputs(session?.user?.id));
 
   // Navigation & UI state
   const [activeTab, setActiveTab] = useState<'portfolio' | 'watchlist' | 'simulator' | 'accounts'>('portfolio');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isBackendOnline, setIsBackendOnline] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Subscribe to auth changes (login, logout, switch user)
+  useEffect(() => {
+    const unsub = authService.subscribe((newSession) => {
+      setSession(newSession);
+      const uid = newSession?.user?.id;
+      setAccounts(storageService.getAccounts(uid));
+      setActiveAccountId(storageService.getActiveAccountId(uid));
+      setHoldings(storageService.getHoldings(uid));
+      setWatchlist(storageService.getWatchlist(uid));
+      setGridInputs(storageService.getGridInputs(uid));
+
+      // If user is authenticated online, fetch synced portfolio from backend
+      if (newSession && !newSession.isGuest && uid) {
+        storageService.fetchFromBackend(uid).then((cloudData) => {
+          if (cloudData) {
+            setAccounts(cloudData.accounts);
+            setHoldings(cloudData.holdings);
+            setWatchlist(cloudData.watchlist);
+            setGridInputs(cloudData.gridInputs);
+            storageService.saveAccounts(cloudData.accounts, uid);
+            storageService.saveHoldings(cloudData.holdings, uid);
+            storageService.saveWatchlist(cloudData.watchlist, uid);
+            storageService.saveGridInputs(cloudData.gridInputs, uid);
+          }
+        });
+      }
+    });
+    return unsub;
+  }, []);
+
+  // Sync to cloud helper
+  const syncToCloud = useCallback(
+    (accs: Account[], hlds: HoldingLot[], wl: WatchlistStock[], grid: GridSimInputs) => {
+      if (session && !session.isGuest && session.user?.id) {
+        storageService.syncWithBackend(session.user.id, {
+          accounts: accs,
+          holdings: hlds,
+          watchlist: wl,
+          gridInputs: grid,
+        });
+      }
+    },
+    [session]
+  );
 
   // Derive all active ticker symbols (from holdings + watchlist)
   const allSymbols = useMemo(() => {
@@ -65,14 +118,15 @@ export const App: React.FC = () => {
   // Account switching handler
   const handleSelectAccount = (id: string) => {
     setActiveAccountId(id);
-    storageService.setActiveAccountId(id);
+    storageService.setActiveAccountId(id, session?.user?.id);
   };
 
   // Holdings handlers
   const handleAddHolding = (lot: HoldingLot) => {
     const updated = [lot, ...holdings];
     setHoldings(updated);
-    storageService.saveHoldings(updated);
+    storageService.saveHoldings(updated, session?.user?.id);
+    syncToCloud(accounts, updated, watchlist, gridInputs);
     // Fetch quote for newly added ticker if not present
     if (!quotes[lot.symbol.toUpperCase()]) {
       refreshQuotes(false);
@@ -82,14 +136,16 @@ export const App: React.FC = () => {
   const handleDeleteHolding = (id: string) => {
     const updated = holdings.filter((h) => h.id !== id);
     setHoldings(updated);
-    storageService.saveHoldings(updated);
+    storageService.saveHoldings(updated, session?.user?.id);
+    syncToCloud(accounts, updated, watchlist, gridInputs);
   };
 
   // Accounts handlers
   const handleAddAccount = (acc: Account) => {
     const updated = [...accounts, acc];
     setAccounts(updated);
-    storageService.saveAccounts(updated);
+    storageService.saveAccounts(updated, session?.user?.id);
+    syncToCloud(updated, holdings, watchlist, gridInputs);
   };
 
   const handleDeleteAccount = (id: string) => {
@@ -97,8 +153,9 @@ export const App: React.FC = () => {
     const updatedLots = holdings.filter((h) => h.accountId !== id);
     setAccounts(updatedAccs);
     setHoldings(updatedLots);
-    storageService.saveAccounts(updatedAccs);
-    storageService.saveHoldings(updatedLots);
+    storageService.saveAccounts(updatedAccs, session?.user?.id);
+    storageService.saveHoldings(updatedLots, session?.user?.id);
+    syncToCloud(updatedAccs, updatedLots, watchlist, gridInputs);
     if (activeAccountId === id) {
       handleSelectAccount('ALL');
     }
@@ -108,7 +165,8 @@ export const App: React.FC = () => {
   const handleAddWatchlistStock = (stock: WatchlistStock) => {
     const updated = [stock, ...watchlist.filter((w) => w.symbol !== stock.symbol)];
     setWatchlist(updated);
-    storageService.saveWatchlist(updated);
+    storageService.saveWatchlist(updated, session?.user?.id);
+    syncToCloud(accounts, holdings, updated, gridInputs);
     if (!quotes[stock.symbol.toUpperCase()]) {
       refreshQuotes(false);
     }
@@ -117,7 +175,8 @@ export const App: React.FC = () => {
   const handleRemoveWatchlistStock = (sym: string) => {
     const updated = watchlist.filter((w) => w.symbol !== sym);
     setWatchlist(updated);
-    storageService.saveWatchlist(updated);
+    storageService.saveWatchlist(updated, session?.user?.id);
+    syncToCloud(accounts, holdings, updated, gridInputs);
   };
 
   const handleUpdateTargetPct = (sym: string, newTarget: number) => {
@@ -125,13 +184,61 @@ export const App: React.FC = () => {
       w.symbol === sym ? { ...w, targetBuyPctOfHigh: newTarget } : w
     );
     setWatchlist(updated);
-    storageService.saveWatchlist(updated);
+    storageService.saveWatchlist(updated, session?.user?.id);
+    syncToCloud(accounts, holdings, updated, gridInputs);
   };
 
   // Grid simulator handler
   const handleSaveGridInputs = (inputs: GridSimInputs) => {
     setGridInputs(inputs);
-    storageService.saveGridInputs(inputs);
+    storageService.saveGridInputs(inputs, session?.user?.id);
+    syncToCloud(accounts, holdings, watchlist, inputs);
+  };
+
+  // Full Portfolio Backup & Restore
+  const handleExportBackup = () => {
+    exportFullPortfolioBackup({
+      accounts,
+      holdings,
+      watchlist,
+      gridInputs,
+      activeAccountId,
+      exportedAt: new Date().toISOString(),
+      user: session?.user?.username,
+    });
+  };
+
+  const handleRestoreBackupFile = async (file: File) => {
+    try {
+      const data = await parseAndValidatePortfolioBackup(file);
+      if (
+        window.confirm(
+          `Restore portfolio backup containing ${data.holdings.length} holdings and ${data.accounts.length} accounts? This will update your current portfolio workspace.`
+        )
+      ) {
+        const uid = session?.user?.id;
+        setAccounts(data.accounts);
+        setHoldings(data.holdings);
+        setWatchlist(data.watchlist);
+        setGridInputs(data.gridInputs);
+        setActiveAccountId(data.activeAccountId || 'ALL');
+
+        storageService.saveAccounts(data.accounts, uid);
+        storageService.saveHoldings(data.holdings, uid);
+        storageService.saveWatchlist(data.watchlist, uid);
+        storageService.saveGridInputs(data.gridInputs, uid);
+        storageService.setActiveAccountId(data.activeAccountId || 'ALL', uid);
+
+        syncToCloud(data.accounts, data.holdings, data.watchlist, data.gridInputs);
+        alert('Portfolio backup restored successfully!');
+      }
+    } catch (err: any) {
+      alert(`Failed to restore backup: ${err.message}`);
+    }
+  };
+
+  const handleLogout = () => {
+    authService.logout();
   };
 
   // Calculate holdings metrics
@@ -181,6 +288,12 @@ export const App: React.FC = () => {
         onRefresh={() => refreshQuotes(true)}
         lastUpdated={latestQuoteTime}
         hasStaleQuotes={hasStaleQuotes}
+        user={session?.user || null}
+        isGuest={!!session?.isGuest}
+        onOpenAuth={() => setIsAuthModalOpen(true)}
+        onLogout={handleLogout}
+        onBackup={handleExportBackup}
+        onRestoreFile={handleRestoreBackupFile}
       />
 
       {/* Main Content Area */}
@@ -248,6 +361,14 @@ export const App: React.FC = () => {
         accounts={accounts}
         defaultAccountId={activeAccountId}
         onSave={handleAddHolding}
+      />
+
+      {/* Auth Modal */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        canDismiss={true}
+        onClose={() => setIsAuthModalOpen(false)}
+        onSuccess={() => setIsAuthModalOpen(false)}
       />
     </div>
   );

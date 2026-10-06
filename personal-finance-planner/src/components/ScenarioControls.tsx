@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { FinancialInputs, DEFAULT_INPUTS } from '../engine/financeEngine';
+import { exportPresetToFile, parseAndValidatePresetFile } from '../utils/presetIO';
 import {
   Sliders,
   DollarSign,
@@ -13,6 +14,10 @@ import {
   Building,
   Receipt,
   Landmark,
+  Download,
+  Upload,
+  CheckCircle2,
+  AlertCircle,
 } from 'lucide-react';
 
 interface Props {
@@ -22,6 +27,8 @@ interface Props {
 }
 
 export const ScenarioControls: React.FC<Props> = ({ inputs, onChange, onReset }) => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [toastMessage, setToastMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [openSection, setOpenSection] = useState<{
     balances: boolean;
     rates: boolean;
@@ -139,6 +146,31 @@ export const ScenarioControls: React.FC<Props> = ({ inputs, onChange, onReset })
     }
   };
 
+  const handleExport = () => {
+    exportPresetToFile(inputs, `scenario_age_${inputs.startAge}`);
+    setToastMessage({ text: 'Preset file saved and downloaded!', type: 'success' });
+    setTimeout(() => setToastMessage(null), 3500);
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const { inputs: loadedInputs, name } = await parseAndValidatePresetFile(file);
+      onChange(loadedInputs);
+      setToastMessage({ text: `Loaded preset "${name}"!`, type: 'success' });
+      setTimeout(() => setToastMessage(null), 3500);
+    } catch (err: any) {
+      setToastMessage({ text: err.message || 'Failed to read preset file.', type: 'error' });
+      setTimeout(() => setToastMessage(null), 4500);
+    } finally {
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
   return (
     <div className="glass-panel controls-card">
       <div className="section-title">
@@ -195,6 +227,72 @@ export const ScenarioControls: React.FC<Props> = ({ inputs, onChange, onReset })
             Inflation 4.5%
           </button>
         </div>
+
+        {/* File Export / Import Actions */}
+        <div style={{ marginTop: '10px', paddingTop: '8px', borderTop: '1px solid rgba(255,255,255,0.08)', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
+          <button
+            type="button"
+            onClick={handleExport}
+            className="tab-btn"
+            style={{
+              fontSize: '11px',
+              padding: '6px 8px',
+              justifyContent: 'center',
+              background: 'rgba(59, 130, 246, 0.15)',
+              color: 'var(--accent-primary)',
+              border: '1px solid rgba(59, 130, 246, 0.3)',
+            }}
+            title="Save all current settings into a downloadable .json preset file"
+          >
+            <Download size={13} /> Save to File
+          </button>
+
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className="tab-btn"
+            style={{
+              fontSize: '11px',
+              padding: '6px 8px',
+              justifyContent: 'center',
+              background: 'rgba(16, 185, 129, 0.15)',
+              color: 'var(--accent-success)',
+              border: '1px solid rgba(16, 185, 129, 0.3)',
+            }}
+            title="Upload and load a saved .json preset file"
+          >
+            <Upload size={13} /> Upload File
+          </button>
+
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileUpload}
+            accept=".json,application/json"
+            style={{ display: 'none' }}
+          />
+        </div>
+
+        {/* Toast Notification */}
+        {toastMessage && (
+          <div
+            style={{
+              marginTop: '8px',
+              padding: '6px 10px',
+              borderRadius: '6px',
+              fontSize: '11px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              background: toastMessage.type === 'success' ? 'rgba(16, 185, 129, 0.18)' : 'rgba(239, 68, 68, 0.18)',
+              color: toastMessage.type === 'success' ? 'var(--accent-success)' : 'var(--accent-danger)',
+              border: `1px solid ${toastMessage.type === 'success' ? 'rgba(16, 185, 129, 0.4)' : 'rgba(239, 68, 68, 0.4)'}`,
+            }}
+          >
+            {toastMessage.type === 'success' ? <CheckCircle2 size={13} style={{ flexShrink: 0 }} /> : <AlertCircle size={13} style={{ flexShrink: 0 }} />}
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{toastMessage.text}</span>
+          </div>
+        )}
       </div>
 
       {/* 1. CORE MILESTONES */}

@@ -1,5 +1,6 @@
 import { Account, HoldingLot, MarketQuote, WatchlistStock, GridSimInputs } from '../types/investment';
 import { DEFAULT_GRID_INPUTS } from '../engine/gridEngine';
+import { authService } from './authService';
 
 const STORAGE_KEYS = {
   ACCOUNTS: 'it_accounts',
@@ -66,11 +67,20 @@ const DEFAULT_CACHED_QUOTES: Record<string, MarketQuote> = {
   GOOG: { symbol: 'GOOG', name: 'Alphabet Inc.', price: 162.30, change: -0.80, changePercent: -0.49, fiftyTwoWeekHigh: 191.75, fiftyTwoWeekLow: 120.21, peRatio: 22.8, sector: 'Communication Services', industry: 'Internet Content & Info', lastUpdated: '2026-09-08T12:00:00Z', isStale: true },
 };
 
+function getKey(baseKey: string, userId?: string): string {
+  const effectiveUser = userId || authService.getSession()?.user.id;
+  if (!effectiveUser || effectiveUser === 'guest') {
+    return baseKey;
+  }
+  return `it_user_${effectiveUser}_${baseKey}`;
+}
+
 export const storageService = {
-  getAccounts(): Account[] {
-    const raw = localStorage.getItem(STORAGE_KEYS.ACCOUNTS);
+  getAccounts(userId?: string): Account[] {
+    const key = getKey(STORAGE_KEYS.ACCOUNTS, userId);
+    const raw = localStorage.getItem(key);
     if (!raw) {
-      this.saveAccounts(DEFAULT_ACCOUNTS);
+      this.saveAccounts(DEFAULT_ACCOUNTS, userId);
       return DEFAULT_ACCOUNTS;
     }
     try {
@@ -80,22 +90,26 @@ export const storageService = {
     }
   },
 
-  saveAccounts(accounts: Account[]) {
-    localStorage.setItem(STORAGE_KEYS.ACCOUNTS, JSON.stringify(accounts));
+  saveAccounts(accounts: Account[], userId?: string) {
+    const key = getKey(STORAGE_KEYS.ACCOUNTS, userId);
+    localStorage.setItem(key, JSON.stringify(accounts));
   },
 
-  getActiveAccountId(): string {
-    return localStorage.getItem(STORAGE_KEYS.ACTIVE_ACCOUNT) || 'ALL';
+  getActiveAccountId(userId?: string): string {
+    const key = getKey(STORAGE_KEYS.ACTIVE_ACCOUNT, userId);
+    return localStorage.getItem(key) || 'ALL';
   },
 
-  setActiveAccountId(id: string) {
-    localStorage.setItem(STORAGE_KEYS.ACTIVE_ACCOUNT, id);
+  setActiveAccountId(id: string, userId?: string) {
+    const key = getKey(STORAGE_KEYS.ACTIVE_ACCOUNT, userId);
+    localStorage.setItem(key, id);
   },
 
-  getHoldings(): HoldingLot[] {
-    const raw = localStorage.getItem(STORAGE_KEYS.HOLDINGS);
+  getHoldings(userId?: string): HoldingLot[] {
+    const key = getKey(STORAGE_KEYS.HOLDINGS, userId);
+    const raw = localStorage.getItem(key);
     if (!raw) {
-      this.saveHoldings(DEFAULT_HOLDINGS);
+      this.saveHoldings(DEFAULT_HOLDINGS, userId);
       return DEFAULT_HOLDINGS;
     }
     try {
@@ -105,14 +119,16 @@ export const storageService = {
     }
   },
 
-  saveHoldings(holdings: HoldingLot[]) {
-    localStorage.setItem(STORAGE_KEYS.HOLDINGS, JSON.stringify(holdings));
+  saveHoldings(holdings: HoldingLot[], userId?: string) {
+    const key = getKey(STORAGE_KEYS.HOLDINGS, userId);
+    localStorage.setItem(key, JSON.stringify(holdings));
   },
 
-  getWatchlist(): WatchlistStock[] {
-    const raw = localStorage.getItem(STORAGE_KEYS.WATCHLIST);
+  getWatchlist(userId?: string): WatchlistStock[] {
+    const key = getKey(STORAGE_KEYS.WATCHLIST, userId);
+    const raw = localStorage.getItem(key);
     if (!raw) {
-      this.saveWatchlist(DEFAULT_WATCHLIST);
+      this.saveWatchlist(DEFAULT_WATCHLIST, userId);
       return DEFAULT_WATCHLIST;
     }
     try {
@@ -122,10 +138,12 @@ export const storageService = {
     }
   },
 
-  saveWatchlist(watchlist: WatchlistStock[]) {
-    localStorage.setItem(STORAGE_KEYS.WATCHLIST, JSON.stringify(watchlist));
+  saveWatchlist(watchlist: WatchlistStock[], userId?: string) {
+    const key = getKey(STORAGE_KEYS.WATCHLIST, userId);
+    localStorage.setItem(key, JSON.stringify(watchlist));
   },
 
+  // Quotes are shared globally across all users to conserve API requests
   getCachedQuotes(): Record<string, MarketQuote> {
     const raw = localStorage.getItem(STORAGE_KEYS.QUOTES);
     if (!raw) {
@@ -143,8 +161,9 @@ export const storageService = {
     localStorage.setItem(STORAGE_KEYS.QUOTES, JSON.stringify(quotes));
   },
 
-  getGridInputs(): GridSimInputs {
-    const raw = localStorage.getItem(STORAGE_KEYS.GRID_INPUTS);
+  getGridInputs(userId?: string): GridSimInputs {
+    const key = getKey(STORAGE_KEYS.GRID_INPUTS, userId);
+    const raw = localStorage.getItem(key);
     if (!raw) return DEFAULT_GRID_INPUTS;
     try {
       return JSON.parse(raw);
@@ -153,7 +172,64 @@ export const storageService = {
     }
   },
 
-  saveGridInputs(inputs: GridSimInputs) {
-    localStorage.setItem(STORAGE_KEYS.GRID_INPUTS, JSON.stringify(inputs));
+  saveGridInputs(inputs: GridSimInputs, userId?: string) {
+    const key = getKey(STORAGE_KEYS.GRID_INPUTS, userId);
+    localStorage.setItem(key, JSON.stringify(inputs));
   },
+
+  /**
+   * Syncs user portfolio with the backend database if online and authenticated
+   */
+  async syncWithBackend(_userId: string, data: {
+    accounts: Account[];
+    holdings: HoldingLot[];
+    watchlist: WatchlistStock[];
+    gridInputs: GridSimInputs;
+  }): Promise<void> {
+    const headers = authService.getAuthHeaders();
+    if (!headers.Authorization) return;
+
+    try {
+      await fetch('/api/user/portfolio', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...headers,
+        },
+        body: JSON.stringify({ portfolio: data }),
+        signal: AbortSignal.timeout(3000),
+      });
+    } catch (e: any) {
+      console.warn('[StorageService] Background cloud sync skipped:', e.message);
+    }
+  },
+
+  /**
+   * Fetches user portfolio from backend database if online and authenticated
+   */
+  async fetchFromBackend(_userId: string): Promise<{
+    accounts: Account[];
+    holdings: HoldingLot[];
+    watchlist: WatchlistStock[];
+    gridInputs: GridSimInputs;
+  } | null> {
+    const headers = authService.getAuthHeaders();
+    if (!headers.Authorization) return null;
+
+    try {
+      const res = await fetch('/api/user/portfolio', {
+        headers,
+        signal: AbortSignal.timeout(3000),
+      });
+      if (res.ok) {
+        const body = await res.json();
+        if (body.portfolio && Array.isArray(body.portfolio.holdings)) {
+          return body.portfolio;
+        }
+      }
+    } catch (e: any) {
+      console.warn('[StorageService] Backend load skipped:', e.message);
+    }
+    return null;
+  }
 };
