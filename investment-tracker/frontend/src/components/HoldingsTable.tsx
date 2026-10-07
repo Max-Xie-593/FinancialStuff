@@ -101,9 +101,6 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({
           <thead>
             <tr>
               <th>Symbol / Asset</th>
-              {activeAccountId === 'ALL' && <th>Account</th>}
-              <th>Industry / Sector</th>
-              <th>Category</th>
               <th className="text-right">Shares</th>
               <th className="text-right">Purchase Price</th>
               <th className="text-right">Cost Basis</th>
@@ -112,6 +109,9 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({
               <th className="text-right">Unrealized P/L</th>
               <th className="text-right">Day Change</th>
               <th className="text-center" style={{ minWidth: '160px' }}>52-Week Range</th>
+              {activeAccountId === 'ALL' && <th>Account</th>}
+              <th>Industry / Sector</th>
+              <th>Category</th>
               <th className="text-center">Action</th>
             </tr>
           </thead>
@@ -138,29 +138,7 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({
                       </div>
                     </td>
 
-                    {/* Account Badge (if viewing all) */}
-                    {activeAccountId === 'ALL' && (
-                      <td>
-                        <span className="badge-account" title={acc?.description}>
-                          {acc?.name || 'Account'}
-                        </span>
-                      </td>
-                    )}
 
-                    {/* Industry / Sector */}
-                    <td>
-                      <div className="industry-cell">
-                        <span className="industry-name">{h.industry || h.sector || 'General'}</span>
-                        <span className="sector-tag">{h.sector || h.category}</span>
-                      </div>
-                    </td>
-
-                    {/* Category */}
-                    <td>
-                      <span className={`badge-category badge-cat-${h.category.toLowerCase()}`}>
-                        {h.category}
-                      </span>
-                    </td>
 
                     {/* Shares */}
                     <td className="text-right font-mono font-medium">
@@ -216,6 +194,30 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({
                         low={h.fiftyTwoWeekLow}
                         high={h.fiftyTwoWeekHigh}
                       />
+                    </td>
+
+                    {/* Account Badge (if viewing all) */}
+                    {activeAccountId === 'ALL' && (
+                      <td>
+                        <span className="badge-account" title={acc?.description}>
+                          {acc?.name || 'Account'}
+                        </span>
+                      </td>
+                    )}
+
+                    {/* Industry / Sector */}
+                    <td>
+                      <div className="industry-cell">
+                        <span className="industry-name">{h.industry || h.sector || 'General'}</span>
+                        <span className="sector-tag">{h.sector || h.category}</span>
+                      </div>
+                    </td>
+
+                    {/* Category */}
+                    <td>
+                      <span className={`badge-category badge-cat-${h.category.toLowerCase()}`}>
+                        {h.category}
+                      </span>
                     </td>
 
                     {/* Action */}
