@@ -30,11 +30,11 @@ export const RangeBar52Wk: React.FC<RangeBar52WkProps> = ({
   return (
     <div className="range-bar-container" title={`52W Low: $${low.toFixed(2)} | Current: $${currentPrice.toFixed(2)} | 52W High: $${high.toFixed(2)}`}>
       <div className="range-bar-labels">
-        <span className="text-muted text-xs">${low.toFixed(1)}</span>
-        <span className={`text-xs font-mono font-medium ${isBelowTarget ? 'text-success font-bold' : 'text-main'}`}>
-          {pctOfHigh.toFixed(1)}% of High
+        <span className="text-muted range-label-bound">${low.toFixed(0)}</span>
+        <span className={`range-label-pct font-mono ${isBelowTarget ? 'text-success font-bold' : 'text-main'}`}>
+          {pctOfHigh.toFixed(0)}%
         </span>
-        <span className="text-muted text-xs">${high.toFixed(1)}</span>
+        <span className="text-muted range-label-bound">${high.toFixed(0)}</span>
       </div>
 
       <div className="range-track">

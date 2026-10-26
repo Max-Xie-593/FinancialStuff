@@ -63,9 +63,10 @@ h1, h2, h3, h4, h5, h6 {
 
 /* App Container */
 .app-container {
-  max-width: 1440px;
+  max-width: 1720px;
+  width: 100%;
   margin: 0 auto;
-  padding: 24px 32px 64px 32px;
+  padding: 20px 24px 64px 24px;
 }
 
 /* Glassmorphism Containers */
@@ -506,26 +507,75 @@ h1, h2, h3, h4, h5, h6 {
 .data-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.86rem;
+  font-size: 0.81rem;
   text-align: left;
 }
 
 .data-table th {
-  padding: 12px 16px;
+  padding: 8px 8px;
   color: var(--text-muted);
   font-weight: 600;
-  font-size: 0.78rem;
+  font-size: 0.72rem;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.03em;
   background: rgba(11, 15, 25, 0.5);
   border-bottom: 1px solid var(--border-card);
   white-space: nowrap;
+  user-select: none;
 }
 
 .data-table td {
-  padding: 13px 16px;
+  padding: 8px 8px;
   border-bottom: 1px solid var(--border-card);
   vertical-align: middle;
+}
+
+/* Sortable Table Headers */
+.sortable-th {
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.sortable-th:hover {
+  background: rgba(59, 130, 246, 0.12);
+  color: #fff;
+}
+
+.sortable-th.th-sorted {
+  color: #60a5fa;
+  background: rgba(59, 130, 246, 0.14);
+}
+
+.th-content {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+}
+
+.th-content.justify-end {
+  justify-content: flex-end;
+}
+
+.th-content.justify-center {
+  justify-content: center;
+}
+
+.sort-icon-active {
+  color: #60a5fa;
+  flex-shrink: 0;
+}
+
+.sort-icon-inactive {
+  color: var(--text-dim);
+  opacity: 0.35;
+  flex-shrink: 0;
+  transition: opacity 0.15s;
+}
+
+.sortable-th:hover .sort-icon-inactive {
+  opacity: 0.85;
+  color: var(--text-main);
 }
 
 .table-row-hover:hover {
@@ -539,6 +589,24 @@ h1, h2, h3, h4, h5, h6 {
   font-style: italic;
 }
 
+/* Responsive Table Cell Constraints */
+.cell-symbol {
+  min-width: 95px;
+}
+
+.cell-industry {
+  min-width: 90px;
+}
+
+.cell-account {
+  min-width: 80px;
+}
+
+.cell-range-bar {
+  min-width: 100px;
+  max-width: 125px;
+}
+
 /* Symbol Cell */
 .symbol-cell {
   display: flex;
@@ -549,13 +617,13 @@ h1, h2, h3, h4, h5, h6 {
   font-weight: 700;
   font-family: var(--font-mono);
   color: #fff;
-  font-size: 0.95rem;
+  font-size: 0.90rem;
 }
 
 .symbol-name {
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   color: var(--text-dim);
-  max-width: 180px;
+  max-width: 120px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -565,37 +633,42 @@ h1, h2, h3, h4, h5, h6 {
 .industry-cell {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
 }
 
 .industry-name {
-  font-size: 0.82rem;
+  font-size: 0.78rem;
   font-weight: 600;
   color: var(--text-main);
   white-space: nowrap;
-  max-width: 160px;
+  max-width: 110px;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .sector-tag {
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   color: var(--text-dim);
   white-space: nowrap;
 }
 
 /* Badges */
 .badge-account {
-  font-size: 0.72rem;
-  padding: 2px 8px;
+  font-size: 0.70rem;
+  padding: 2px 6px;
   border-radius: 4px;
   background: rgba(255, 255, 255, 0.07);
   color: var(--text-muted);
+  display: inline-block;
+  max-width: 110px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .badge-category {
-  font-size: 0.72rem;
-  padding: 2px 8px;
+  font-size: 0.70rem;
+  padding: 2px 6px;
   border-radius: 4px;
   font-weight: 600;
   text-transform: uppercase;
@@ -610,28 +683,38 @@ h1, h2, h3, h4, h5, h6 {
 
 .stale-dot {
   display: inline-block;
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
   border-radius: 50%;
   background: var(--accent-warning);
-  margin-left: 4px;
+  margin-left: 3px;
 }
 
 /* 52-Week Range Bar Component */
 .range-bar-container {
   width: 100%;
-  min-width: 140px;
+  min-width: 95px;
+  max-width: 120px;
 }
 
 .range-bar-labels {
   display: flex;
   justify-content: space-between;
-  margin-bottom: 4px;
+  align-items: center;
+  margin-bottom: 2px;
+}
+
+.range-label-bound {
+  font-size: 0.65rem;
+}
+
+.range-label-pct {
+  font-size: 0.68rem;
 }
 
 .range-track {
   position: relative;
-  height: 6px;
+  height: 5px;
   background: rgba(255, 255, 255, 0.08);
   border-radius: 3px;
   overflow: visible;
@@ -639,14 +722,14 @@ h1, h2, h3, h4, h5, h6 {
 
 .current-price-marker {
   position: absolute;
-  top: -4px;
-  width: 14px;
-  height: 14px;
+  top: -3px;
+  width: 11px;
+  height: 11px;
   border-radius: 50%;
   background: var(--accent-primary);
-  border: 2px solid #fff;
+  border: 1.5px solid #fff;
   transform: translateX(-50%);
-  box-shadow: 0 0 6px rgba(59, 130, 246, 0.6);
+  box-shadow: 0 0 5px rgba(59, 130, 246, 0.6);
   z-index: 2;
 }
 

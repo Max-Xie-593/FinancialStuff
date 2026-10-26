@@ -23,8 +23,9 @@ export function calculateHoldingMetrics(
   const unrealizedGainLossPercent = costBasis > 0 ? (unrealizedGainLoss / costBasis) * 100 : 0;
 
   const dayChangePerShare = quote?.change ?? 0;
+  const dayChangePerSharePercent = quote?.changePercent ?? 0;
   const dayGainLoss = holding.shares * dayChangePerShare;
-  const dayGainLossPercent = quote?.changePercent ?? 0;
+  const dayGainLossPercent = dayChangePerSharePercent;
 
   const fiftyTwoWeekHigh = (quote?.fiftyTwoWeekHigh && quote.fiftyTwoWeekHigh > 0) ? quote.fiftyTwoWeekHigh : currentPrice;
   const fiftyTwoWeekLow = (quote?.fiftyTwoWeekLow && quote.fiftyTwoWeekLow > 0) ? quote.fiftyTwoWeekLow : currentPrice;
@@ -40,6 +41,8 @@ export function calculateHoldingMetrics(
     currentValue,
     unrealizedGainLoss,
     unrealizedGainLossPercent,
+    dayChangePerShare,
+    dayChangePerSharePercent,
     dayGainLoss,
     dayGainLossPercent,
     fiftyTwoWeekHigh,

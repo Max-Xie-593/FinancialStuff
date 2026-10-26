@@ -43,6 +43,8 @@ export interface HoldingCalculated extends HoldingLot {
   currentValue: number;
   unrealizedGainLoss: number;
   unrealizedGainLossPercent: number;
+  dayChangePerShare: number;
+  dayChangePerSharePercent: number;
   dayGainLoss: number;
   dayGainLossPercent: number;
   fiftyTwoWeekHigh: number;

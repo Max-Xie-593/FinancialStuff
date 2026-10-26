@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { HoldingCalculated, AssetCategory, Account } from '../types/investment';
 import { RangeBar52Wk } from './RangeBar52Wk';
-import { Plus, Trash2, Search } from 'lucide-react';
+import { Plus, Trash2, Search, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 
 interface HoldingsTableProps {
   holdings: HoldingCalculated[];
@@ -10,6 +10,23 @@ interface HoldingsTableProps {
   onDeletePosition: (id: string) => void;
   activeAccountId: string;
 }
+
+type SortField =
+  | 'symbol'
+  | 'shares'
+  | 'purchasePrice'
+  | 'costBasis'
+  | 'currentPrice'
+  | 'dayChangePerShare'
+  | 'currentValue'
+  | 'dayGainLoss'
+  | 'unrealizedGainLoss'
+  | 'percentOf52WkHigh'
+  | 'account'
+  | 'industry'
+  | 'category';
+
+type SortDirection = 'asc' | 'desc';
 
 const CATEGORY_TABS: { key: 'ALL' | AssetCategory; label: string }[] = [
   { key: 'ALL', label: 'All Assets' },
@@ -29,12 +46,25 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({
 }) => {
   const [selectedCategory, setSelectedCategory] = useState<'ALL' | AssetCategory>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
+  const [sortField, setSortField] = useState<SortField>('currentValue');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
 
   const accountMap = useMemo(() => {
     const map = new Map<string, Account>();
     accounts.forEach((acc) => map.set(acc.id, acc));
     return map;
   }, [accounts]);
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortField(field);
+      // Default text fields to ascending, numeric fields to descending
+      const isText = ['symbol', 'account', 'industry', 'category'].includes(field);
+      setSortDirection(isText ? 'asc' : 'desc');
+    }
+  };
 
   const filteredHoldings = useMemo(() => {
     return holdings.filter((h) => {
@@ -55,8 +85,93 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({
     });
   }, [holdings, selectedCategory, searchQuery]);
 
+  const sortedHoldings = useMemo(() => {
+    return [...filteredHoldings].sort((a, b) => {
+      let comparison = 0;
+      switch (sortField) {
+        case 'symbol':
+          comparison = a.symbol.localeCompare(b.symbol);
+          break;
+        case 'shares':
+          comparison = a.shares - b.shares;
+          break;
+        case 'purchasePrice':
+          comparison = a.purchasePrice - b.purchasePrice;
+          break;
+        case 'costBasis':
+          comparison = a.costBasis - b.costBasis;
+          break;
+        case 'currentPrice':
+          comparison = a.currentPrice - b.currentPrice;
+          break;
+        case 'dayChangePerShare':
+          comparison = a.dayChangePerShare - b.dayChangePerShare;
+          break;
+        case 'currentValue':
+          comparison = a.currentValue - b.currentValue;
+          break;
+        case 'dayGainLoss':
+          comparison = a.dayGainLoss - b.dayGainLoss;
+          break;
+        case 'unrealizedGainLoss':
+          comparison = a.unrealizedGainLoss - b.unrealizedGainLoss;
+          break;
+        case 'percentOf52WkHigh':
+          comparison = a.percentOf52WkHigh - b.percentOf52WkHigh;
+          break;
+        case 'account': {
+          const accA = accountMap.get(a.accountId)?.name || '';
+          const accB = accountMap.get(b.accountId)?.name || '';
+          comparison = accA.localeCompare(accB);
+          break;
+        }
+        case 'industry': {
+          const indA = a.industry || a.sector || '';
+          const indB = b.industry || b.sector || '';
+          comparison = indA.localeCompare(indB);
+          break;
+        }
+        case 'category':
+          comparison = a.category.localeCompare(b.category);
+          break;
+      }
+      return sortDirection === 'asc' ? comparison : -comparison;
+    });
+  }, [filteredHoldings, sortField, sortDirection, accountMap]);
+
   const formatCurrency = (val: number, decimals: number = 2) =>
     new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: decimals }).format(val);
+
+  const renderSortableHeader = (
+    field: SortField,
+    label: string,
+    align: 'left' | 'right' | 'center' = 'left',
+    title?: string,
+    style?: React.CSSProperties
+  ) => {
+    const isSorted = sortField === field;
+    return (
+      <th
+        onClick={() => handleSort(field)}
+        className={`sortable-th ${isSorted ? 'th-sorted' : ''}`}
+        title={title || `Sort by ${label}`}
+        style={style}
+      >
+        <div className={`th-content ${align === 'right' ? 'justify-end' : align === 'center' ? 'justify-center' : ''}`}>
+          <span>{label}</span>
+          {isSorted ? (
+            sortDirection === 'asc' ? (
+              <ArrowUp size={12} className="sort-icon-active" />
+            ) : (
+              <ArrowDown size={12} className="sort-icon-active" />
+            )
+          ) : (
+            <ArrowUpDown size={12} className="sort-icon-inactive" />
+          )}
+        </div>
+      </th>
+    );
+  };
 
   return (
     <div className="glass-panel table-panel">
@@ -81,7 +196,7 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({
             <Search size={15} className="search-icon" />
             <input
               type="text"
-              placeholder="Search ticker or name..."
+              placeholder="Search ticker, name, or industry..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="search-input"
@@ -95,79 +210,101 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({
         </div>
       </div>
 
-      {/* Responsive Table */}
+      {/* Responsive Table Container */}
       <div className="table-scroll-container">
         <table className="data-table">
           <thead>
             <tr>
-              <th>Symbol / Asset</th>
-              <th className="text-right">Shares</th>
-              <th className="text-right">Purchase Price</th>
-              <th className="text-right">Cost Basis</th>
-              <th className="text-right">Market Price</th>
-              <th className="text-right">Total Value</th>
-              <th className="text-right">Unrealized P/L</th>
-              <th className="text-right">Day Change</th>
-              <th className="text-center" style={{ minWidth: '160px' }}>52-Week Range</th>
-              {activeAccountId === 'ALL' && <th>Account</th>}
-              <th>Industry / Sector</th>
-              <th>Category</th>
-              <th className="text-center">Action</th>
+              {renderSortableHeader('symbol', 'Symbol / Asset', 'left', 'Stock or Fund Ticker')}
+              {renderSortableHeader('shares', 'Shares', 'right', 'Number of shares held')}
+              {renderSortableHeader('purchasePrice', 'Avg Cost', 'right', 'Purchase price per share')}
+              {renderSortableHeader('costBasis', 'Cost Basis', 'right', 'Total purchase cost')}
+              {renderSortableHeader('currentPrice', 'Market Price', 'right', 'Current share market price')}
+              {renderSortableHeader('dayChangePerShare', 'Share Day Chg', 'right', 'Change in share price today ($ / %)')}
+              {renderSortableHeader('currentValue', 'Total Value', 'right', 'Current position market value')}
+              {renderSortableHeader('dayGainLoss', 'Total Day P/L', 'right', 'Total position dollar gain/loss today')}
+              {renderSortableHeader('unrealizedGainLoss', 'Total P/L', 'right', 'Total unrealized gain/loss ($ / %)')}
+              {renderSortableHeader('percentOf52WkHigh', '52W Range', 'center', 'Current price relative to 52-week range', { minWidth: '105px' })}
+              {activeAccountId === 'ALL' && renderSortableHeader('account', 'Account', 'left', 'Account name')}
+              {renderSortableHeader('industry', 'Industry / Sector', 'left', 'Economic industry and sector')}
+              {renderSortableHeader('category', 'Category', 'center', 'Asset classification')}
+              <th className="text-center" style={{ width: '40px' }}>Action</th>
             </tr>
           </thead>
           <tbody>
-            {filteredHoldings.length === 0 ? (
+            {sortedHoldings.length === 0 ? (
               <tr>
-                <td colSpan={activeAccountId === 'ALL' ? 13 : 12} className="empty-table-cell">
+                <td colSpan={activeAccountId === 'ALL' ? 14 : 13} className="empty-table-cell">
                   No investment holdings found matching the filter. Click "Add Position" to record a holding lot.
                 </td>
               </tr>
             ) : (
-              filteredHoldings.map((h) => {
+              sortedHoldings.map((h) => {
                 const isGain = h.unrealizedGainLoss >= 0;
                 const isDayGain = h.dayGainLoss >= 0;
+                const isShareDayGain = h.dayChangePerShare >= 0;
                 const acc = accountMap.get(h.accountId);
 
                 return (
                   <tr key={h.id} className="table-row-hover">
-                    {/* Symbol & Name */}
-                    <td>
+                    {/* 1. Symbol & Name */}
+                    <td className="cell-symbol">
                       <div className="symbol-cell">
                         <span className="symbol-ticker">{h.symbol}</span>
-                        <span className="symbol-name">{h.name || h.symbol}</span>
+                        <span className="symbol-name" title={h.name || h.symbol}>
+                          {h.name || h.symbol}
+                        </span>
                       </div>
                     </td>
 
-
-
-                    {/* Shares */}
+                    {/* 2. Shares */}
                     <td className="text-right font-mono font-medium">
                       {h.shares.toLocaleString()}
                     </td>
 
-                    {/* Purchase Price */}
+                    {/* 3. Purchase Price */}
                     <td className="text-right font-mono text-muted">
                       {formatCurrency(h.purchasePrice)}
                       <div className="text-xs text-dim">{h.purchaseDate}</div>
                     </td>
 
-                    {/* Cost Basis */}
+                    {/* 4. Cost Basis */}
                     <td className="text-right font-mono font-medium">
                       {formatCurrency(h.costBasis)}
                     </td>
 
-                    {/* Today's Market Price */}
+                    {/* 5. Today's Market Price */}
                     <td className="text-right font-mono font-bold">
                       {formatCurrency(h.currentPrice)}
                       {h.isStale && <span className="stale-dot" title="Cached Price" />}
                     </td>
 
-                    {/* Today's Total Value */}
+                    {/* 6. Share Price Change by the Day (Per share) */}
+                    <td className="text-right font-mono">
+                      <div className={`font-semibold ${isShareDayGain ? 'text-success' : 'text-danger'}`}>
+                        {isShareDayGain ? '+' : ''}{formatCurrency(h.dayChangePerShare)}
+                      </div>
+                      <div className={`text-xs ${isShareDayGain ? 'text-success' : 'text-danger'}`}>
+                        {isShareDayGain ? '+' : ''}{h.dayChangePerSharePercent.toFixed(2)}%
+                      </div>
+                    </td>
+
+                    {/* 7. Today's Total Value */}
                     <td className="text-right font-mono font-bold text-main">
                       {formatCurrency(h.currentValue)}
                     </td>
 
-                    {/* Unrealized Gain / Loss */}
+                    {/* 8. Day Gain / Loss (Total position dollar gain today) */}
+                    <td className="text-right font-mono">
+                      <div className={`font-semibold ${isDayGain ? 'text-success' : 'text-danger'}`}>
+                        {isDayGain ? '+' : ''}{formatCurrency(h.dayGainLoss)}
+                      </div>
+                      <div className="text-xs text-dim">
+                        {isDayGain ? '+' : ''}{h.dayGainLossPercent.toFixed(2)}%
+                      </div>
+                    </td>
+
+                    {/* 9. Unrealized Gain / Loss */}
                     <td className="text-right font-mono">
                       <div className={`font-bold ${isGain ? 'text-success' : 'text-danger'}`}>
                         {isGain ? '+' : ''}{formatCurrency(h.unrealizedGainLoss)}
@@ -177,18 +314,8 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({
                       </div>
                     </td>
 
-                    {/* Day Change */}
-                    <td className="text-right font-mono">
-                      <div className={isDayGain ? 'text-success' : 'text-danger'}>
-                        {isDayGain ? '+' : ''}{formatCurrency(h.dayGainLoss)}
-                      </div>
-                      <div className="text-xs text-dim">
-                        {isDayGain ? '+' : ''}{h.dayGainLossPercent.toFixed(2)}%
-                      </div>
-                    </td>
-
-                    {/* 52-Week Range Bar */}
-                    <td>
+                    {/* 10. 52-Week Range Bar */}
+                    <td className="cell-range-bar">
                       <RangeBar52Wk
                         currentPrice={h.currentPrice}
                         low={h.fiftyTwoWeekLow}
@@ -196,31 +323,35 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({
                       />
                     </td>
 
-                    {/* Account Badge (if viewing all) */}
+                    {/* 11. Account Badge (if viewing all) */}
                     {activeAccountId === 'ALL' && (
-                      <td>
-                        <span className="badge-account" title={acc?.description}>
+                      <td className="cell-account">
+                        <span className="badge-account" title={acc?.description || acc?.name}>
                           {acc?.name || 'Account'}
                         </span>
                       </td>
                     )}
 
-                    {/* Industry / Sector */}
-                    <td>
+                    {/* 12. Industry / Sector */}
+                    <td className="cell-industry">
                       <div className="industry-cell">
-                        <span className="industry-name">{h.industry || h.sector || 'General'}</span>
-                        <span className="sector-tag">{h.sector || h.category}</span>
+                        <span className="industry-name" title={h.industry || h.sector || 'General'}>
+                          {h.industry || h.sector || 'General'}
+                        </span>
+                        <span className="sector-tag" title={h.sector || h.category}>
+                          {h.sector || h.category}
+                        </span>
                       </div>
                     </td>
 
-                    {/* Category */}
-                    <td>
+                    {/* 13. Category */}
+                    <td className="text-center">
                       <span className={`badge-category badge-cat-${h.category.toLowerCase()}`}>
                         {h.category}
                       </span>
                     </td>
 
-                    {/* Action */}
+                    {/* 14. Action */}
                     <td className="text-center">
                       <button
                         onClick={() => onDeletePosition(h.id)}
