@@ -339,7 +339,7 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({
                           {h.industry || h.sector || 'General'}
                         </span>
                         <span className="sector-tag" title={h.sector || h.category}>
-                          {h.sector || h.category}
+                          {h.sector && h.sector.toLowerCase() !== (h.industry || '').toLowerCase() ? h.sector : h.category}
                         </span>
                       </div>
                     </td>

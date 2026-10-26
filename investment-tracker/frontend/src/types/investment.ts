@@ -18,6 +18,8 @@ export interface HoldingLot {
   shares: number;
   purchasePrice: number;
   purchaseDate: string; // YYYY-MM-DD
+  sector?: string;
+  industry?: string;
   notes?: string;
 }
 

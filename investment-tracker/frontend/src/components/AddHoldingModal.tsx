@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Account, AssetCategory, HoldingLot } from '../types/investment';
+import { KNOWN_METADATA } from '../engine/portfolioEngine';
 import { X, PlusCircle } from 'lucide-react';
 
 interface AddHoldingModalProps {
@@ -24,9 +25,22 @@ export const AddHoldingModal: React.FC<AddHoldingModalProps> = ({
   const [shares, setShares] = useState<string>('');
   const [purchasePrice, setPurchasePrice] = useState<string>('');
   const [purchaseDate, setPurchaseDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [sector, setSector] = useState('');
+  const [industry, setIndustry] = useState('');
   const [notes, setNotes] = useState('');
 
   if (!isOpen) return null;
+
+  const handleSymbolChange = (val: string) => {
+    setSymbol(val);
+    const upper = val.trim().toUpperCase();
+    const known = KNOWN_METADATA[upper];
+    if (known) {
+      if (!name) setName(known.name || '');
+      if (!sector) setSector(known.sector || '');
+      if (!industry) setIndustry(known.industry || '');
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,6 +61,8 @@ export const AddHoldingModal: React.FC<AddHoldingModalProps> = ({
       shares: numShares,
       purchasePrice: numPrice,
       purchaseDate,
+      sector: sector.trim() || undefined,
+      industry: industry.trim() || undefined,
       notes: notes.trim() || undefined,
     };
 
@@ -92,7 +108,7 @@ export const AddHoldingModal: React.FC<AddHoldingModalProps> = ({
                 type="text"
                 placeholder="e.g. AAPL, VOO, FZROX"
                 value={symbol}
-                onChange={(e) => setSymbol(e.target.value)}
+                onChange={(e) => handleSymbolChange(e.target.value)}
                 className="form-input"
                 required
                 autoFocus
@@ -166,6 +182,32 @@ export const AddHoldingModal: React.FC<AddHoldingModalProps> = ({
                 placeholder="e.g. Apple Inc."
                 value={name}
                 onChange={(e) => setName(e.target.value)}
+                className="form-input"
+              />
+            </div>
+          </div>
+
+          <div className="form-row-2">
+            {/* Sector (Optional) */}
+            <div className="form-group">
+              <label className="form-label">Sector (Optional)</label>
+              <input
+                type="text"
+                placeholder="Auto-detected or e.g. Technology"
+                value={sector}
+                onChange={(e) => setSector(e.target.value)}
+                className="form-input"
+              />
+            </div>
+
+            {/* Industry (Optional) */}
+            <div className="form-group">
+              <label className="form-label">Industry (Optional)</label>
+              <input
+                type="text"
+                placeholder="Auto-detected or e.g. Semiconductors"
+                value={industry}
+                onChange={(e) => setIndustry(e.target.value)}
                 className="form-input"
               />
             </div>
