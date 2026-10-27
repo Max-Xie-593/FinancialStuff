@@ -283,6 +283,125 @@ h1, h2, h3, h4, h5, h6 {
   color: #93c5fd;
 }
 
+/* Asset Category / Subset Selector Bar */
+.category-selector-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.category-selector-header {
+  display: flex;
+  align-items: center;
+}
+
+.category-selector-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.category-pills-list {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.category-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 13px;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid var(--border-card);
+  color: var(--text-muted);
+  font-size: 0.81rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.category-pill:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-main);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.category-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.category-pill-icon {
+  color: var(--text-dim);
+  transition: color 0.2s;
+}
+
+.category-pill:hover .category-pill-icon {
+  color: var(--text-main);
+}
+
+.category-pill-value {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--text-main);
+  background: rgba(255, 255, 255, 0.08);
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+/* Category Pill Active States */
+.category-pill-active {
+  color: #fff;
+  font-weight: 600;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+}
+
+.category-pill-active .category-pill-icon {
+  color: #fff;
+}
+
+.category-pill-active.cat-all {
+  background: rgba(59, 130, 246, 0.22);
+  border-color: rgba(59, 130, 246, 0.55);
+}
+
+.category-pill-active.cat-stock {
+  background: rgba(59, 130, 246, 0.25);
+  border-color: #3b82f6;
+}
+
+.category-pill-active.cat-dividend {
+  background: rgba(16, 185, 129, 0.25);
+  border-color: #10b981;
+}
+
+.category-pill-active.cat-berkshire {
+  background: rgba(139, 92, 246, 0.25);
+  border-color: #8b5cf6;
+}
+
+.category-pill-active.cat-etf {
+  background: rgba(6, 182, 212, 0.25);
+  border-color: #06b6d4;
+}
+
+.category-pill-active.cat-mutualfund {
+  background: rgba(245, 158, 11, 0.25);
+  border-color: #f59e0b;
+}
+
 /* Stat Cards */
 .summary-cards-grid {
   display: grid;

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Account, HoldingLot, MarketQuote, WatchlistStock, GridSimInputs } from './types/investment';
+import { Account, HoldingLot, MarketQuote, WatchlistStock, GridSimInputs, AssetCategory } from './types/investment';
 import { storageService } from './services/storageService';
 import { authService } from './services/authService';
 import { AuthSession } from './types/auth';
@@ -7,6 +7,7 @@ import { fetchMarketQuotes, checkBackendHealth } from './services/marketApi';
 import { calculateHoldingMetrics, aggregatePortfolio } from './engine/portfolioEngine';
 import { Header } from './components/Header';
 import { AccountSelector } from './components/AccountSelector';
+import { CategorySelector } from './components/CategorySelector';
 import { PortfolioSummaryCards } from './components/PortfolioSummaryCards';
 import { HoldingsTable } from './components/HoldingsTable';
 import { AddHoldingModal } from './components/AddHoldingModal';
@@ -31,6 +32,7 @@ export const App: React.FC = () => {
 
   // Navigation & UI state
   const [activeTab, setActiveTab] = useState<'portfolio' | 'watchlist' | 'simulator' | 'accounts'>('portfolio');
+  const [selectedCategory, setSelectedCategory] = useState<'ALL' | AssetCategory>('ALL');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isBackendOnline, setIsBackendOnline] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -246,16 +248,49 @@ export const App: React.FC = () => {
     return holdings.map((lot) => calculateHoldingMetrics(lot, quotes));
   }, [holdings, quotes]);
 
-  // Filter holdings for the active account
-  const activeHoldings = useMemo(() => {
+  // 1. Filter holdings for the active account
+  const accountHoldings = useMemo(() => {
     if (activeAccountId === 'ALL') return calculatedHoldings;
     return calculatedHoldings.filter((h) => h.accountId === activeAccountId);
   }, [calculatedHoldings, activeAccountId]);
 
-  // Aggregate summary
-  const portfolioSummary = useMemo(() => {
-    return aggregatePortfolio(activeHoldings);
-  }, [activeHoldings]);
+  // 2. Overall account summary (across all categories in the active account, for full portfolio context)
+  const overallAccountSummary = useMemo(() => {
+    return aggregatePortfolio(accountHoldings);
+  }, [accountHoldings]);
+
+  // 3. Category statistics within the active account (for pill counts and values)
+  const categoryStats = useMemo(() => {
+    const stats: Record<AssetCategory | 'ALL', { count: number; value: number }> = {
+      ALL: { count: accountHoldings.length, value: 0 },
+      Stock: { count: 0, value: 0 },
+      Dividend: { count: 0, value: 0 },
+      Berkshire: { count: 0, value: 0 },
+      ETF: { count: 0, value: 0 },
+      MutualFund: { count: 0, value: 0 },
+    };
+
+    accountHoldings.forEach((h) => {
+      stats.ALL.value += h.currentValue;
+      if (stats[h.category]) {
+        stats[h.category].count += 1;
+        stats[h.category].value += h.currentValue;
+      }
+    });
+
+    return stats;
+  }, [accountHoldings]);
+
+  // 4. Holdings filtered by both active account AND selected asset category
+  const activeCategoryHoldings = useMemo(() => {
+    if (selectedCategory === 'ALL') return accountHoldings;
+    return accountHoldings.filter((h) => h.category === selectedCategory);
+  }, [accountHoldings, selectedCategory]);
+
+  // 5. Aggregate summary for the selected subset of assets (or all assets)
+  const categorySummary = useMemo(() => {
+    return aggregatePortfolio(activeCategoryHoldings);
+  }, [activeCategoryHoldings]);
 
   // Count of positions by account for the account switcher pills
   const positionCountByAccount = useMemo(() => {
@@ -310,14 +345,27 @@ export const App: React.FC = () => {
               positionCountByAccount={positionCountByAccount}
             />
 
-            {/* Metric Cards */}
-            <PortfolioSummaryCards summary={portfolioSummary} />
+            {/* Asset Category / Subset Switcher Bar */}
+            <CategorySelector
+              selectedCategory={selectedCategory}
+              onSelectCategory={setSelectedCategory}
+              categoryStats={categoryStats}
+            />
+
+            {/* Metric Cards (Big Values for Account & Selected Asset Subset) */}
+            <PortfolioSummaryCards
+              summary={categorySummary}
+              overallTotalValue={overallAccountSummary.totalCurrentValue}
+              selectedCategory={selectedCategory}
+            />
 
             {/* Holdings Table */}
             <HoldingsTable
-              holdings={activeHoldings}
+              holdings={accountHoldings}
               accounts={accounts}
               activeAccountId={activeAccountId}
+              selectedCategory={selectedCategory}
+              onSelectCategory={setSelectedCategory}
               onAddPositionClick={() => setIsAddModalOpen(true)}
               onDeletePosition={handleDeleteHolding}
             />

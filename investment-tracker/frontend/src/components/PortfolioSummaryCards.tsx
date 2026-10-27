@@ -5,6 +5,8 @@ import { AssetCategory } from '../types/investment';
 
 interface PortfolioSummaryCardsProps {
   summary: PortfolioSummary;
+  overallTotalValue?: number;
+  selectedCategory?: 'ALL' | AssetCategory;
 }
 
 const CATEGORY_LABELS: Record<AssetCategory, string> = {
@@ -37,7 +39,11 @@ const SECTOR_COLORS = [
   '#64748b', // Slate
 ];
 
-export const PortfolioSummaryCards: React.FC<PortfolioSummaryCardsProps> = ({ summary }) => {
+export const PortfolioSummaryCards: React.FC<PortfolioSummaryCardsProps> = ({
+  summary,
+  overallTotalValue,
+  selectedCategory = 'ALL',
+}) => {
   const [allocationMode, setAllocationMode] = useState<'sector' | 'assetClass'>('sector');
 
   const formatCurrency = (val: number) =>
@@ -46,6 +52,15 @@ export const PortfolioSummaryCards: React.FC<PortfolioSummaryCardsProps> = ({ su
   const isGain = summary.totalGainLoss >= 0;
   const isDayGain = summary.totalDayGainLoss >= 0;
 
+  const isSubset = selectedCategory !== 'ALL';
+  const categoryLabel = isSubset ? CATEGORY_LABELS[selectedCategory] : 'Portfolio';
+
+  // Calculate what percentage this subset makes of the total account
+  const pctOfAccount =
+    overallTotalValue && overallTotalValue > 0
+      ? (summary.totalCurrentValue / overallTotalValue) * 100
+      : 100;
+
   // Prepare sector allocation sorted by value descending
   const sortedSectors = Object.entries(summary.sectorBreakdown || {})
     .filter(([_, data]) => data.value > 0)
@@ -53,24 +68,36 @@ export const PortfolioSummaryCards: React.FC<PortfolioSummaryCardsProps> = ({ su
 
   return (
     <div className="summary-cards-grid">
-      {/* Total Portfolio Value */}
+      {/* 1. Total Value */}
       <div className="glass-panel stat-card">
         <div className="stat-card-header">
-          <span className="stat-card-title">Total Portfolio Value</span>
+          <span className="stat-card-title">
+            {isSubset ? `${categoryLabel} Value` : 'Total Portfolio Value'}
+          </span>
           <div className="stat-icon-wrapper bg-blue-subtle">
             <DollarSign size={18} className="text-primary" />
           </div>
         </div>
         <div className="stat-card-value">{formatCurrency(summary.totalCurrentValue)}</div>
-        <div className="stat-card-subtext">
+        <div className="stat-card-subtext flex items-center justify-between">
           <span className="text-muted">Cost Basis: {formatCurrency(summary.totalCostBasis)}</span>
+          {isSubset && overallTotalValue !== undefined && overallTotalValue > 0 && (
+            <span
+              className="pill pill-primary"
+              title={`${pctOfAccount.toFixed(1)}% of active account portfolio`}
+            >
+              {pctOfAccount.toFixed(1)}% of Account
+            </span>
+          )}
         </div>
       </div>
 
-      {/* Unrealized Total Gain / Loss */}
+      {/* 2. Unrealized Total Gain / Loss */}
       <div className="glass-panel stat-card">
         <div className="stat-card-header">
-          <span className="stat-card-title">Total Return (All-Time)</span>
+          <span className="stat-card-title">
+            {isSubset ? `${categoryLabel} Total Return` : 'Total Return (All-Time)'}
+          </span>
           <div className={`stat-icon-wrapper ${isGain ? 'bg-success-subtle' : 'bg-danger-subtle'}`}>
             {isGain ? <TrendingUp size={18} className="text-success" /> : <TrendingDown size={18} className="text-danger" />}
           </div>
@@ -85,10 +112,12 @@ export const PortfolioSummaryCards: React.FC<PortfolioSummaryCardsProps> = ({ su
         </div>
       </div>
 
-      {/* Day Change */}
+      {/* 3. Day Change */}
       <div className="glass-panel stat-card">
         <div className="stat-card-header">
-          <span className="stat-card-title">Day Change (Est.)</span>
+          <span className="stat-card-title">
+            {isSubset ? `${categoryLabel} Day Change` : 'Day Change (Est.)'}
+          </span>
           <div className={`stat-icon-wrapper ${isDayGain ? 'bg-success-subtle' : 'bg-danger-subtle'}`}>
             <Activity size={18} className={isDayGain ? 'text-success' : 'text-danger'} />
           </div>
@@ -103,7 +132,7 @@ export const PortfolioSummaryCards: React.FC<PortfolioSummaryCardsProps> = ({ su
         </div>
       </div>
 
-      {/* Asset / Sector Allocation Breakdown */}
+      {/* 4. Asset / Sector Allocation Breakdown */}
       <div className="glass-panel stat-card allocation-card">
         <div className="stat-card-header">
           <div className="flex items-center gap-2">
@@ -111,31 +140,43 @@ export const PortfolioSummaryCards: React.FC<PortfolioSummaryCardsProps> = ({ su
               <PieChart size={15} className="text-purple" />
             </div>
             <span className="stat-card-title">
-              {allocationMode === 'sector' ? 'Industry / Sector Allocation' : 'Asset Class Allocation'}
+              {isSubset
+                ? `${categoryLabel} Breakdown`
+                : allocationMode === 'sector'
+                ? 'Industry / Sector Allocation'
+                : 'Asset Class Allocation'}
             </span>
           </div>
 
-          <div className="allocation-mode-switcher">
-            <button
-              type="button"
-              onClick={() => setAllocationMode('sector')}
-              className={`switcher-btn ${allocationMode === 'sector' ? 'switcher-btn-active' : ''}`}
-            >
-              Sectors
-            </button>
-            <button
-              type="button"
-              onClick={() => setAllocationMode('assetClass')}
-              className={`switcher-btn ${allocationMode === 'assetClass' ? 'switcher-btn-active' : ''}`}
-            >
-              Classes
-            </button>
-          </div>
+          {!isSubset ? (
+            <div className="allocation-mode-switcher">
+              <button
+                type="button"
+                onClick={() => setAllocationMode('sector')}
+                className={`switcher-btn ${allocationMode === 'sector' ? 'switcher-btn-active' : ''}`}
+              >
+                Sectors
+              </button>
+              <button
+                type="button"
+                onClick={() => setAllocationMode('assetClass')}
+                className={`switcher-btn ${allocationMode === 'assetClass' ? 'switcher-btn-active' : ''}`}
+              >
+                Classes
+              </button>
+            </div>
+          ) : (
+            overallTotalValue !== undefined && overallTotalValue > 0 && (
+              <span className="text-xs font-mono text-purple font-medium">
+                {pctOfAccount.toFixed(1)}% of Portfolio
+              </span>
+            )
+          )}
         </div>
 
         {/* Multi-Segment Allocation Bar */}
         <div className="allocation-progress-bar">
-          {allocationMode === 'sector' ? (
+          {isSubset || allocationMode === 'sector' ? (
             sortedSectors.map(([sectorName, data], idx) => {
               const pct = summary.totalCurrentValue > 0 ? (data.value / summary.totalCurrentValue) * 100 : 0;
               if (pct < 0.5) return null;
@@ -174,18 +215,22 @@ export const PortfolioSummaryCards: React.FC<PortfolioSummaryCardsProps> = ({ su
 
         {/* Legend */}
         <div className="allocation-legend">
-          {allocationMode === 'sector' ? (
-            sortedSectors.map(([sectorName, data], idx) => {
-              const pct = summary.totalCurrentValue > 0 ? (data.value / summary.totalCurrentValue) * 100 : 0;
-              const color = SECTOR_COLORS[idx % SECTOR_COLORS.length];
-              return (
-                <div key={sectorName} className="allocation-legend-item" title={`${data.count} position(s)`}>
-                  <span className="legend-dot" style={{ backgroundColor: color }} />
-                  <span className="legend-label">{sectorName}</span>
-                  <span className="legend-pct">{pct.toFixed(1)}%</span>
-                </div>
-              );
-            })
+          {isSubset || allocationMode === 'sector' ? (
+            sortedSectors.length === 0 ? (
+              <div className="text-xs text-dim italic">No sector data recorded for this asset subset</div>
+            ) : (
+              sortedSectors.map(([sectorName, data], idx) => {
+                const pct = summary.totalCurrentValue > 0 ? (data.value / summary.totalCurrentValue) * 100 : 0;
+                const color = SECTOR_COLORS[idx % SECTOR_COLORS.length];
+                return (
+                  <div key={sectorName} className="allocation-legend-item" title={`${data.count} position(s)`}>
+                    <span className="legend-dot" style={{ backgroundColor: color }} />
+                    <span className="legend-label">{sectorName}</span>
+                    <span className="legend-pct">{pct.toFixed(1)}%</span>
+                  </div>
+                );
+              })
+            )
           ) : (
             (Object.keys(summary.categoryBreakdown) as AssetCategory[]).map((cat) => {
               const catVal = summary.categoryBreakdown[cat].value;

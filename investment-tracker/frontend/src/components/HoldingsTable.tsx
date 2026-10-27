@@ -9,6 +9,8 @@ interface HoldingsTableProps {
   onAddPositionClick: () => void;
   onDeletePosition: (id: string) => void;
   activeAccountId: string;
+  selectedCategory?: 'ALL' | AssetCategory;
+  onSelectCategory?: (category: 'ALL' | AssetCategory) => void;
 }
 
 type SortField =
@@ -43,8 +45,13 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({
   onAddPositionClick,
   onDeletePosition,
   activeAccountId,
+  selectedCategory: propCategory,
+  onSelectCategory: propOnSelectCategory,
 }) => {
-  const [selectedCategory, setSelectedCategory] = useState<'ALL' | AssetCategory>('ALL');
+  const [internalCategory, setInternalCategory] = useState<'ALL' | AssetCategory>('ALL');
+  const activeCategory = propCategory !== undefined ? propCategory : internalCategory;
+  const setActiveCategory = propOnSelectCategory || setInternalCategory;
+
   const [searchQuery, setSearchQuery] = useState('');
   const [sortField, setSortField] = useState<SortField>('currentValue');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
@@ -69,7 +76,7 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({
   const filteredHoldings = useMemo(() => {
     return holdings.filter((h) => {
       // Filter by category
-      if (selectedCategory !== 'ALL' && h.category !== selectedCategory) {
+      if (activeCategory !== 'ALL' && h.category !== activeCategory) {
         return false;
       }
       // Filter by search query
@@ -83,7 +90,7 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({
       }
       return true;
     });
-  }, [holdings, selectedCategory, searchQuery]);
+  }, [holdings, activeCategory, searchQuery]);
 
   const sortedHoldings = useMemo(() => {
     return [...filteredHoldings].sort((a, b) => {
@@ -182,8 +189,8 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({
           {CATEGORY_TABS.map((tab) => (
             <button
               key={tab.key}
-              onClick={() => setSelectedCategory(tab.key)}
-              className={`btn-filter ${selectedCategory === tab.key ? 'btn-filter-active' : ''}`}
+              onClick={() => setActiveCategory(tab.key)}
+              className={`btn-filter ${activeCategory === tab.key ? 'btn-filter-active' : ''}`}
             >
               {tab.label}
             </button>
