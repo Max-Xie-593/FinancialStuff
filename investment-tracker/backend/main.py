@@ -2,16 +2,42 @@ import base64
 import hashlib
 import hmac
 import json
+import math
 import os
 import time
 from typing import List, Optional, Dict, Any
 from fastapi import FastAPI, Header, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from market_service import market_service
 import db
 
-app = FastAPI(title="Investment Tracker API & Auth Service", version="1.0.0")
+
+def sanitize_for_json(obj: Any) -> Any:
+    """Recursively replaces all NaN, Infinity, -Infinity floats with None (JSON null)."""
+    if isinstance(obj, float):
+        if math.isnan(obj) or math.isinf(obj):
+            return None
+        return obj
+    elif isinstance(obj, dict):
+        return {k: sanitize_for_json(v) for k, v in obj.items()}
+    elif isinstance(obj, (list, tuple)):
+        return [sanitize_for_json(v) for v in obj]
+    return obj
+
+
+class SafeJSONResponse(JSONResponse):
+    """Guarantees that no response ever fails with 'Out of range float values are not JSON compliant'."""
+    def render(self, content: Any) -> bytes:
+        return super().render(sanitize_for_json(content))
+
+
+app = FastAPI(
+    title="Investment Tracker API & Auth Service",
+    version="1.0.0",
+    default_response_class=SafeJSONResponse,
+)
 
 app.add_middleware(
     CORSMiddleware,
