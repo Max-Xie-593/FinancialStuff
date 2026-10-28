@@ -1,3 +1,4 @@
+import concurrent.futures
 import json
 import math
 import os
@@ -161,6 +162,169 @@ class MarketService:
             print(f"[MarketService] Search metadata fallback skipped for {symbol}: {e}")
         return {}
 
+    def _fetch_symbol_data(self, sym: str, now: float) -> Optional[dict]:
+        try:
+            ticker = yf.Ticker(sym)
+            price = 0.0
+            prev_close = 0.0
+            fifty_two_high = 0.0
+            fifty_two_low = 0.0
+            name = sym
+            pe_ratio = None
+            quote_type = "EQUITY"
+
+            # Tier 1: fast_info (fast, light endpoint, rarely blocked on cloud datacenter IPs)
+            try:
+                fi = ticker.fast_info
+                price = clean_float(getattr(fi, "last_price", None) or getattr(fi, "lastPrice", None), 0.0) or 0.0
+                prev_close = clean_float(getattr(fi, "previous_close", None) or getattr(fi, "previousClose", None), price) or price
+                fifty_two_high = clean_float(getattr(fi, "year_high", None) or getattr(fi, "yearHigh", None), 0.0) or 0.0
+                fifty_two_low = clean_float(getattr(fi, "year_low", None) or getattr(fi, "yearLow", None), 0.0) or 0.0
+                raw_quote_type = getattr(fi, "quote_type", None) or getattr(fi, "quoteType", "EQUITY")
+                if raw_quote_type:
+                    quote_type = raw_quote_type
+            except Exception as e:
+                print(f"[MarketService] fast_info skipped for {sym}: {e}")
+
+            # Tier 2: history chart endpoint fallback if price or 52-wk data is missing
+            if not is_valid_price(price) or not is_valid_price(fifty_two_high):
+                try:
+                    hist = ticker.history(period="5d", interval="1d")
+                    if not hist.empty:
+                        if not is_valid_price(price):
+                            p = clean_float(hist["Close"].iloc[-1], 0.0)
+                            if is_valid_price(p):
+                                price = p
+                                prev = clean_float(hist["Close"].iloc[-2], price) if len(hist) > 1 else price
+                                prev_close = prev if is_valid_price(prev) else price
+                        if not is_valid_price(fifty_two_high):
+                            h = clean_float(hist["High"].max(), 0.0)
+                            if is_valid_price(h):
+                                fifty_two_high = h
+                        if not is_valid_price(fifty_two_low):
+                            l = clean_float(hist["Low"].min(), 0.0)
+                            if is_valid_price(l):
+                                fifty_two_low = l
+                except Exception as e:
+                    print(f"[MarketService] history fallback skipped for {sym}: {e}")
+
+            # Tier 3: metadata enrichment (ticker.info -> search API -> fund deduction -> known registry)
+            known = KNOWN_METADATA.get(sym)
+            name = known["name"] if known else sym
+            sector = known["sector"] if known else None
+            industry = known["industry"] if known else None
+
+            try:
+                info = ticker.info or {}
+                raw_name = info.get("shortName") or info.get("longName")
+                if raw_name:
+                    name = raw_name
+                raw_pe = info.get("trailingPE") or info.get("forwardPE")
+                pe_ratio = clean_float(raw_pe, None)
+
+                raw_sector = info.get("sector") or info.get("category")
+                raw_industry = info.get("industry") or info.get("fundFamily")
+
+                if raw_sector and str(raw_sector).upper() not in ("ETF", "OTHER", "MUTUALFUND"):
+                    sector = raw_sector
+                if raw_industry and str(raw_industry).upper() not in ("ETF", "OTHER", "MUTUALFUND"):
+                    industry = raw_industry
+
+                if not is_valid_price(price):
+                    info_price = clean_float(
+                        info.get("currentPrice")
+                        or info.get("regularMarketPrice")
+                        or info.get("navPrice")
+                        or info.get("previousClose"),
+                        0.0
+                    )
+                    if is_valid_price(info_price):
+                        price = info_price
+                if not is_valid_price(fifty_two_high):
+                    info_high = clean_float(info.get("fiftyTwoWeekHigh"), 0.0)
+                    if is_valid_price(info_high):
+                        fifty_two_high = info_high
+                if not is_valid_price(fifty_two_low):
+                    info_low = clean_float(info.get("fiftyTwoWeekLow"), 0.0)
+                    if is_valid_price(info_low):
+                        fifty_two_low = info_low
+            except Exception:
+                pass
+
+            # If sector or industry still missing (happens when cloud datacenters are blocked by Yahoo bot checks):
+            if not sector or not industry or sector in ("Other", "ETF", "Mutual Fund"):
+                search_meta = self._fetch_search_metadata(sym)
+                if search_meta.get("name") and (not name or name == sym):
+                    name = search_meta["name"]
+                if search_meta.get("sector"):
+                    sector = search_meta["sector"]
+                if search_meta.get("industry"):
+                    industry = search_meta["industry"]
+                if search_meta.get("quoteType"):
+                    quote_type = search_meta["quoteType"]
+
+            # If ETF or Mutual Fund without specific sector/industry, deduce from fund name
+            if not sector or not industry or sector in ("Other", "ETF", "Mutual Fund"):
+                if quote_type in ("ETF", "MUTUALFUND") or (known and known.get("quoteType") in ("ETF", "MUTUALFUND")):
+                    fund_sec, fund_ind = self._deduce_fund_metadata(name, quote_type)
+                    if not sector or sector in ("Other", "ETF", "Mutual Fund"):
+                        sector = fund_sec
+                    if not industry or industry in ("Other", "ETF", "Mutual Fund", sector):
+                        industry = fund_ind
+
+            # Final fallback guarantees: non-empty, non-duplicate
+            if not sector or sector == "Other":
+                sector = "Equities" if quote_type == "EQUITY" else ("Large Cap Blend" if quote_type == "ETF" else "Mutual Funds")
+            if not industry or industry in ("Other", sector):
+                industry = "General Equity" if quote_type == "EQUITY" else ("Index ETF" if quote_type == "ETF" else "Index Fund")
+
+            # Fallback bounds if 52-week data is still zero/invalid
+            if not is_valid_price(fifty_two_high) and is_valid_price(price):
+                fifty_two_high = price * 1.05
+            if not is_valid_price(fifty_two_low) and is_valid_price(price):
+                fifty_two_low = price * 0.95
+
+            # STRICT GUARD: Never return or cache a 0.0 or invalid price!
+            if not is_valid_price(price):
+                print(f"[MarketService] Warning: Could not resolve valid price for {sym}")
+                return None
+
+            if not is_valid_price(prev_close):
+                prev_close = price
+
+            change = price - prev_close
+            change_pct = ((change / prev_close) * 100) if prev_close > 0 else 0.0
+
+            safe_price = round(float(price), 4)
+            safe_change = round(clean_float(change, 0.0) or 0.0, 4)
+            safe_change_pct = round(clean_float(change_pct, 0.0) or 0.0, 2)
+            safe_high = round(clean_float(fifty_two_high, price) or price, 4)
+            safe_low = round(clean_float(fifty_two_low, price) or price, 4)
+            safe_pe = round(float(pe_ratio), 2) if pe_ratio is not None else None
+
+            quote_data = {
+                "symbol": sym,
+                "name": str(name),
+                "price": safe_price,
+                "change": safe_change,
+                "changePercent": safe_change_pct,
+                "fiftyTwoWeekHigh": safe_high,
+                "fiftyTwoWeekLow": safe_low,
+                "peRatio": safe_pe,
+                "sector": str(sector),
+                "industry": str(industry),
+                "quoteType": str(quote_type).upper(),
+                "lastUpdated": datetime.now(timezone.utc).isoformat(),
+                "_cached_at": now,
+                "isStale": False,
+            }
+
+            return sanitize_for_json(quote_data)
+
+        except Exception as e:
+            print(f"[MarketService] Error fetching {sym}: {e}")
+            return None
+
     def get_single_quote(self, symbol: str, force_refresh: bool = False) -> Optional[dict]:
         quotes = self.get_batch_quotes([symbol], force_refresh=force_refresh)
         return quotes.get(symbol.upper())
@@ -184,180 +348,31 @@ class MarketService:
         if not symbols_to_fetch:
             return results
 
-        print(f"[MarketService] Fetching {len(symbols_to_fetch)} symbols from yfinance: {symbols_to_fetch}")
+        print(f"[MarketService] Fetching {len(symbols_to_fetch)} symbols in parallel from yfinance: {symbols_to_fetch}")
 
-        for sym in symbols_to_fetch:
-            try:
-                ticker = yf.Ticker(sym)
-                price = 0.0
-                prev_close = 0.0
-                fifty_two_high = 0.0
-                fifty_two_low = 0.0
-                name = sym
-                pe_ratio = None
-                quote_type = "EQUITY"
-
-                # Tier 1: fast_info (fast, light endpoint, rarely blocked on cloud datacenter IPs)
+        max_workers = min(10, len(symbols_to_fetch))
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+            future_to_sym = {
+                executor.submit(self._fetch_symbol_data, sym, now): sym
+                for sym in symbols_to_fetch
+            }
+            for future in concurrent.futures.as_completed(future_to_sym):
+                sym = future_to_sym[future]
                 try:
-                    fi = ticker.fast_info
-                    price = clean_float(getattr(fi, "last_price", None) or getattr(fi, "lastPrice", None), 0.0) or 0.0
-                    prev_close = clean_float(getattr(fi, "previous_close", None) or getattr(fi, "previousClose", None), price) or price
-                    fifty_two_high = clean_float(getattr(fi, "year_high", None) or getattr(fi, "yearHigh", None), 0.0) or 0.0
-                    fifty_two_low = clean_float(getattr(fi, "year_low", None) or getattr(fi, "yearLow", None), 0.0) or 0.0
-                    raw_quote_type = getattr(fi, "quote_type", None) or getattr(fi, "quoteType", "EQUITY")
-                    if raw_quote_type:
-                        quote_type = raw_quote_type
+                    quote_data = future.result()
+                    if quote_data:
+                        results[sym] = quote_data
+                        self._cache[sym] = quote_data
+                    elif sym in self._cache and is_valid_price(self._cache[sym].get("price")):
+                        stale_entry = sanitize_for_json(dict(self._cache[sym]))
+                        stale_entry["isStale"] = True
+                        results[sym] = stale_entry
                 except Exception as e:
-                    print(f"[MarketService] fast_info skipped for {sym}: {e}")
-
-                # Tier 2: history chart endpoint fallback if price or 52-wk data is missing
-                if not is_valid_price(price) or not is_valid_price(fifty_two_high):
-                    try:
-                        hist = ticker.history(period="5d", interval="1d")
-                        if not hist.empty:
-                            if not is_valid_price(price):
-                                p = clean_float(hist["Close"].iloc[-1], 0.0)
-                                if is_valid_price(p):
-                                    price = p
-                                    prev = clean_float(hist["Close"].iloc[-2], price) if len(hist) > 1 else price
-                                    prev_close = prev if is_valid_price(prev) else price
-                            if not is_valid_price(fifty_two_high):
-                                h = clean_float(hist["High"].max(), 0.0)
-                                if is_valid_price(h):
-                                    fifty_two_high = h
-                            if not is_valid_price(fifty_two_low):
-                                l = clean_float(hist["Low"].min(), 0.0)
-                                if is_valid_price(l):
-                                    fifty_two_low = l
-                    except Exception as e:
-                        print(f"[MarketService] history fallback skipped for {sym}: {e}")
-
-                # Tier 3: metadata enrichment (ticker.info -> search API -> fund deduction -> known registry)
-                known = KNOWN_METADATA.get(sym)
-                name = known["name"] if known else sym
-                sector = known["sector"] if known else None
-                industry = known["industry"] if known else None
-
-                try:
-                    info = ticker.info or {}
-                    raw_name = info.get("shortName") or info.get("longName")
-                    if raw_name:
-                        name = raw_name
-                    raw_pe = info.get("trailingPE") or info.get("forwardPE")
-                    pe_ratio = clean_float(raw_pe, None)
-
-                    raw_sector = info.get("sector") or info.get("category")
-                    raw_industry = info.get("industry") or info.get("fundFamily")
-
-                    if raw_sector and str(raw_sector).upper() not in ("ETF", "OTHER", "MUTUALFUND"):
-                        sector = raw_sector
-                    if raw_industry and str(raw_industry).upper() not in ("ETF", "OTHER", "MUTUALFUND"):
-                        industry = raw_industry
-
-                    if not is_valid_price(price):
-                        info_price = clean_float(
-                            info.get("currentPrice")
-                            or info.get("regularMarketPrice")
-                            or info.get("navPrice")
-                            or info.get("previousClose"),
-                            0.0
-                        )
-                        if is_valid_price(info_price):
-                            price = info_price
-                    if not is_valid_price(fifty_two_high):
-                        info_high = clean_float(info.get("fiftyTwoWeekHigh"), 0.0)
-                        if is_valid_price(info_high):
-                            fifty_two_high = info_high
-                    if not is_valid_price(fifty_two_low):
-                        info_low = clean_float(info.get("fiftyTwoWeekLow"), 0.0)
-                        if is_valid_price(info_low):
-                            fifty_two_low = info_low
-                except Exception:
-                    pass
-
-                # If sector or industry still missing (happens when cloud datacenters are blocked by Yahoo bot checks):
-                if not sector or not industry or sector in ("Other", "ETF", "Mutual Fund"):
-                    search_meta = self._fetch_search_metadata(sym)
-                    if search_meta.get("name") and (not name or name == sym):
-                        name = search_meta["name"]
-                    if search_meta.get("sector"):
-                        sector = search_meta["sector"]
-                    if search_meta.get("industry"):
-                        industry = search_meta["industry"]
-                    if search_meta.get("quoteType"):
-                        quote_type = search_meta["quoteType"]
-
-                # If ETF or Mutual Fund without specific sector/industry, deduce from fund name
-                if not sector or not industry or sector in ("Other", "ETF", "Mutual Fund"):
-                    if quote_type in ("ETF", "MUTUALFUND") or (known and known.get("quoteType") in ("ETF", "MUTUALFUND")):
-                        fund_sec, fund_ind = self._deduce_fund_metadata(name, quote_type)
-                        if not sector or sector in ("Other", "ETF", "Mutual Fund"):
-                            sector = fund_sec
-                        if not industry or industry in ("Other", "ETF", "Mutual Fund", sector):
-                            industry = fund_ind
-
-                # Final fallback guarantees: non-empty, non-duplicate
-                if not sector or sector == "Other":
-                    sector = "Equities" if quote_type == "EQUITY" else ("Large Cap Blend" if quote_type == "ETF" else "Mutual Funds")
-                if not industry or industry in ("Other", sector):
-                    industry = "General Equity" if quote_type == "EQUITY" else ("Index ETF" if quote_type == "ETF" else "Index Fund")
-
-                # Fallback bounds if 52-week data is still zero/invalid
-                if not is_valid_price(fifty_two_high) and is_valid_price(price):
-                    fifty_two_high = price * 1.05
-                if not is_valid_price(fifty_two_low) and is_valid_price(price):
-                    fifty_two_low = price * 0.95
-
-                # STRICT GUARD: Never return or cache a 0.0 or invalid price!
-                if not is_valid_price(price):
-                    print(f"[MarketService] Warning: Could not resolve valid price for {sym}")
+                    print(f"[MarketService] Worker exception for {sym}: {e}")
                     if sym in self._cache and is_valid_price(self._cache[sym].get("price")):
                         stale_entry = sanitize_for_json(dict(self._cache[sym]))
                         stale_entry["isStale"] = True
                         results[sym] = stale_entry
-                    continue
-
-                if not is_valid_price(prev_close):
-                    prev_close = price
-
-                change = price - prev_close
-                change_pct = ((change / prev_close) * 100) if prev_close > 0 else 0.0
-
-                safe_price = round(float(price), 4)
-                safe_change = round(clean_float(change, 0.0) or 0.0, 4)
-                safe_change_pct = round(clean_float(change_pct, 0.0) or 0.0, 2)
-                safe_high = round(clean_float(fifty_two_high, price) or price, 4)
-                safe_low = round(clean_float(fifty_two_low, price) or price, 4)
-                safe_pe = round(float(pe_ratio), 2) if pe_ratio is not None else None
-
-                quote_data = {
-                    "symbol": sym,
-                    "name": str(name),
-                    "price": safe_price,
-                    "change": safe_change,
-                    "changePercent": safe_change_pct,
-                    "fiftyTwoWeekHigh": safe_high,
-                    "fiftyTwoWeekLow": safe_low,
-                    "peRatio": safe_pe,
-                    "sector": str(sector),
-                    "industry": str(industry),
-                    "quoteType": str(quote_type).upper(),
-                    "lastUpdated": datetime.now(timezone.utc).isoformat(),
-                    "_cached_at": now,
-                    "isStale": False,
-                }
-
-                sanitized_quote = sanitize_for_json(quote_data)
-                self._cache[sym] = sanitized_quote
-                results[sym] = sanitized_quote
-
-            except Exception as e:
-                print(f"[MarketService] Error fetching {sym}: {e}")
-                # Fallback to existing stale cache if present and valid
-                if sym in self._cache and is_valid_price(self._cache[sym].get("price")):
-                    stale_entry = sanitize_for_json(dict(self._cache[sym]))
-                    stale_entry["isStale"] = True
-                    results[sym] = stale_entry
 
         self._save_cache()
         return sanitize_for_json(results)

@@ -37,7 +37,7 @@ export async function fetchMarketQuotes(
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ symbols: normalized, force_refresh: forceRefresh }),
-      signal: AbortSignal.timeout(15000), // 15s timeout for batch yfinance
+      signal: AbortSignal.timeout(60000), // 60s timeout for cloud cold starts and batch fetches
     });
 
     if (!response.ok) {
@@ -65,6 +65,8 @@ export async function fetchMarketQuotes(
   } catch (err: any) {
     console.warn('[MarketAPI] Backend request failed, utilizing cached snapshot:', err.message);
 
+    const isOnline = await checkBackendHealth();
+
     // Mark cached quotes as stale
     const staleQuotes: Record<string, MarketQuote> = {};
     for (const [sym, q] of Object.entries(cached)) {
@@ -73,8 +75,10 @@ export async function fetchMarketQuotes(
 
     return {
       quotes: staleQuotes,
-      isBackendOnline: false,
-      message: 'Backend server is offline or unreachable. Displaying cached quotes.',
+      isBackendOnline: isOnline,
+      message: isOnline
+        ? 'Market sync timed out. Displaying cached quotes.'
+        : 'Backend server is offline or unreachable. Displaying cached quotes.',
     };
   }
 }
