@@ -177,7 +177,13 @@ class MarketService:
             try:
                 fi = ticker.fast_info
                 price = clean_float(getattr(fi, "last_price", None) or getattr(fi, "lastPrice", None), 0.0) or 0.0
-                prev_close = clean_float(getattr(fi, "previous_close", None) or getattr(fi, "previousClose", None), price) or price
+                prev_close = clean_float(
+                    getattr(fi, "regular_market_previous_close", None)
+                    or getattr(fi, "regularMarketPreviousClose", None)
+                    or getattr(fi, "previous_close", None)
+                    or getattr(fi, "previousClose", None),
+                    price
+                ) or price
                 fifty_two_high = clean_float(getattr(fi, "year_high", None) or getattr(fi, "yearHigh", None), 0.0) or 0.0
                 fifty_two_low = clean_float(getattr(fi, "year_low", None) or getattr(fi, "yearLow", None), 0.0) or 0.0
                 raw_quote_type = getattr(fi, "quote_type", None) or getattr(fi, "quoteType", "EQUITY")
@@ -240,6 +246,14 @@ class MarketService:
                     )
                     if is_valid_price(info_price):
                         price = info_price
+                if not is_valid_price(prev_close) or prev_close == price:
+                    info_prev = clean_float(
+                        info.get("regularMarketPreviousClose")
+                        or info.get("previousClose"),
+                        0.0
+                    )
+                    if is_valid_price(info_prev):
+                        prev_close = info_prev
                 if not is_valid_price(fifty_two_high):
                     info_high = clean_float(info.get("fiftyTwoWeekHigh"), 0.0)
                     if is_valid_price(info_high):
