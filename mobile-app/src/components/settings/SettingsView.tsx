@@ -445,12 +445,17 @@ export const SettingsView: React.FC<Props> = ({
             Backend API Endpoint
           </label>
           <p className="text-xs text-dim" style={{ marginBottom: '8px' }}>
-            Default is <code>/api</code> (proxied to <code>http://127.0.0.1:8000</code>). On mobile without local PC, enter your Render URL (e.g. <code>https://investment-tracker-backend.onrender.com</code>).
+            Active endpoint: <code style={{ color: 'var(--accent-cyan)' }}>{getApiBaseUrl()}</code>
+            {(import.meta.env.VITE_API_URL || import.meta.env.VITE_BACKEND_URL) && (
+              <span style={{ color: 'var(--accent-success)', marginLeft: '6px' }}>
+                (Permanently configured in Vercel)
+              </span>
+            )}
           </p>
           <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
             <input
               type="text"
-              placeholder="/api (or https://your-app.onrender.com)"
+              placeholder={getApiBaseUrl()}
               value={apiUrl}
               onChange={(e) => setApiUrl(e.target.value)}
               className="form-input"

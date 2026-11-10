@@ -9,8 +9,16 @@ export function getApiBaseUrl(): string {
       return clean.endsWith('/api') ? clean : `${clean}/api`;
     }
   }
-  const ENV_API_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace(/\/$/, '') : '';
-  return ENV_API_URL ? `${ENV_API_URL}/api` : '/api';
+  const rawEnv =
+    (import.meta.env.VITE_API_URL as string | undefined) ||
+    (import.meta.env.VITE_BACKEND_URL as string | undefined) ||
+    (import.meta.env.VITE_API_BASE_URL as string | undefined) ||
+    '';
+  if (rawEnv && rawEnv.trim()) {
+    const clean = rawEnv.trim().replace(/\/$/, '');
+    return clean.endsWith('/api') ? clean : `${clean}/api`;
+  }
+  return '/api';
 }
 
 export function setCustomApiUrl(url: string | null) {
