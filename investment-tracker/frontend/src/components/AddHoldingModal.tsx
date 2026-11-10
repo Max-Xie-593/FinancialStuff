@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Account, AssetCategory, HoldingLot } from '../types/investment';
 import { KNOWN_METADATA } from '../engine/portfolioEngine';
 import { X, PlusCircle } from 'lucide-react';
@@ -29,7 +29,32 @@ export const AddHoldingModal: React.FC<AddHoldingModalProps> = ({
   const [industry, setIndustry] = useState('');
   const [notes, setNotes] = useState('');
 
+  const resetForm = () => {
+    setAccountId(defaultAccountId === 'ALL' ? accounts[0]?.id || '' : defaultAccountId);
+    setSymbol('');
+    setName('');
+    setCategory('Stock');
+    setShares('');
+    setPurchasePrice('');
+    setPurchaseDate(new Date().toISOString().split('T')[0]);
+    setSector('');
+    setIndustry('');
+    setNotes('');
+  };
+
+  // Reset form whenever the modal opens or active account changes
+  useEffect(() => {
+    if (isOpen) {
+      resetForm();
+    }
+  }, [isOpen, defaultAccountId, accounts]);
+
   if (!isOpen) return null;
+
+  const handleClose = () => {
+    resetForm();
+    onClose();
+  };
 
   const handleSymbolChange = (val: string) => {
     setSymbol(val);
@@ -67,18 +92,19 @@ export const AddHoldingModal: React.FC<AddHoldingModalProps> = ({
     };
 
     onSave(newLot);
+    resetForm();
     onClose();
   };
 
   return (
-    <div className="modal-backdrop">
-      <div className="glass-panel modal-card">
+    <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) handleClose(); }}>
+      <div className="glass-panel modal-card" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <div className="modal-title-group">
             <PlusCircle size={20} className="text-primary" />
             <h3 className="modal-title">Record Holding Lot</h3>
           </div>
-          <button onClick={onClose} className="modal-close-btn">
+          <button onClick={handleClose} className="modal-close-btn" aria-label="Close modal">
             <X size={18} />
           </button>
         </div>
@@ -225,10 +251,9 @@ export const AddHoldingModal: React.FC<AddHoldingModalProps> = ({
             />
           </div>
 
-
           {/* Modal Actions */}
           <div className="modal-footer">
-            <button type="button" onClick={onClose} className="btn btn-secondary">
+            <button type="button" onClick={handleClose} className="btn btn-secondary">
               Cancel
             </button>
             <button type="submit" className="btn btn-primary">
@@ -240,3 +265,4 @@ export const AddHoldingModal: React.FC<AddHoldingModalProps> = ({
     </div>
   );
 };
+export default AddHoldingModal;
