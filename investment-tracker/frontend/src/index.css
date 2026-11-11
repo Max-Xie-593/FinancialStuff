@@ -1361,3 +1361,93 @@ h1, h2, h3, h4, h5, h6 {
   text-decoration: underline;
 }
 
+/* 2D Freeze Panes: Row Header Lock & Sticky Symbol Column */
+.table-scroll-container {
+  overflow-x: auto;
+  overflow-y: auto;
+  max-height: 72vh;
+  -webkit-overflow-scrolling: touch;
+  position: relative;
+}
+
+.data-table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+/* Sticky thead (Vertical Row Header Freeze) */
+.data-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 14;
+  background: #0b0f19;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.16);
+}
+
+/* Top-Left Corner Cell: Sticky on BOTH X & Y axes */
+.data-table thead th:first-child,
+.data-table thead th.sticky-col {
+  position: sticky;
+  top: 0;
+  left: 0;
+  z-index: 28;
+  background: #0b0f19;
+  border-right: 1px solid rgba(255, 255, 255, 0.16);
+  border-bottom: 2px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 4px 4px 10px rgba(0, 0, 0, 0.45);
+  min-width: 115px;
+  max-width: 145px;
+}
+
+/* Sticky Data Cells for Symbol Column */
+.data-table td:first-child,
+.data-table td.cell-symbol,
+.data-table td.sticky-col {
+  position: sticky;
+  left: 0;
+  z-index: 8;
+  background: #0f172a;
+  border-right: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 4px 0 10px rgba(0, 0, 0, 0.45);
+  min-width: 115px;
+  max-width: 145px;
+}
+
+.data-table tr.table-row-hover:hover td:first-child,
+.data-table tr:hover td:first-child,
+.data-table tr.table-row-hover:hover td.cell-symbol,
+.data-table tr:hover td.cell-symbol,
+.data-table tr.table-row-hover:hover td.sticky-col,
+.data-table tr:hover td.sticky-col {
+  background: #1e293b;
+}
+
+.data-table td[colspan] {
+  position: static;
+  box-shadow: none;
+}
+
+/* Edit Holding Lot Button */
+.btn-icon-edit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  background: rgba(59, 130, 246, 0.12);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  color: #93c5fd;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  outline: none;
+}
+
+.btn-icon-edit:hover {
+  background: rgba(59, 130, 246, 0.26);
+  color: #fff;
+  border-color: rgba(59, 130, 246, 0.65);
+  transform: translateY(-1px);
+}
+
+

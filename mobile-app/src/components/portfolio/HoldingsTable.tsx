@@ -1,13 +1,14 @@
 import React, { useState, useMemo } from 'react';
 import { HoldingCalculated, AssetCategory, Account } from '../../types/investment';
 import { RangeBar52Wk } from './RangeBar52Wk';
-import { Plus, Trash2, Search, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { Plus, Trash2, Search, ArrowUpDown, ArrowUp, ArrowDown, Pencil } from 'lucide-react';
 
 interface HoldingsTableProps {
   holdings: HoldingCalculated[];
   accounts: Account[];
   onAddPositionClick: () => void;
   onDeletePosition: (id: string) => void;
+  onEditPosition?: (holding: HoldingCalculated) => void;
   activeAccountId: string;
   selectedCategory?: 'ALL' | AssetCategory;
   onSelectCategory?: (category: 'ALL' | AssetCategory) => void;
@@ -44,6 +45,7 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({
   accounts,
   onAddPositionClick,
   onDeletePosition,
+  onEditPosition,
   activeAccountId,
   selectedCategory: propCategory,
   onSelectCategory: propOnSelectCategory,
@@ -157,10 +159,11 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({
     style?: React.CSSProperties
   ) => {
     const isSorted = sortField === field;
+    const isSticky = field === 'symbol';
     return (
       <th
         onClick={() => handleSort(field)}
-        className={`sortable-th ${isSorted ? 'th-sorted' : ''}`}
+        className={`sortable-th ${isSticky ? 'sticky-col' : ''} ${isSorted ? 'th-sorted' : ''}`}
         title={title || `Sort by ${label}`}
         style={style}
       >
@@ -224,19 +227,19 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({
           <thead>
             <tr>
               {renderSortableHeader('symbol', 'Symbol / Asset', 'left', 'Stock or Fund Ticker')}
+              {renderSortableHeader('currentPrice', 'Market Price', 'right', 'Current share market price')}
+              {renderSortableHeader('dayChangePerShare', 'Share Day Chg', 'right', 'Change in share price today ($ / %)')}
+              {renderSortableHeader('percentOf52WkHigh', '52W Range', 'center', 'Current price relative to 52-week range', { minWidth: '105px' })}
               {renderSortableHeader('shares', 'Shares', 'right', 'Number of shares held')}
               {renderSortableHeader('purchasePrice', 'Avg Cost', 'right', 'Purchase price per share')}
               {renderSortableHeader('costBasis', 'Cost Basis', 'right', 'Total purchase cost')}
-              {renderSortableHeader('currentPrice', 'Market Price', 'right', 'Current share market price')}
-              {renderSortableHeader('dayChangePerShare', 'Share Day Chg', 'right', 'Change in share price today ($ / %)')}
               {renderSortableHeader('currentValue', 'Total Value', 'right', 'Current position market value')}
               {renderSortableHeader('dayGainLoss', 'Total Day P/L', 'right', 'Total position dollar gain/loss today')}
               {renderSortableHeader('unrealizedGainLoss', 'Total P/L', 'right', 'Total unrealized gain/loss ($ / %)')}
-              {renderSortableHeader('percentOf52WkHigh', '52W Range', 'center', 'Current price relative to 52-week range', { minWidth: '105px' })}
               {activeAccountId === 'ALL' && renderSortableHeader('account', 'Account', 'left', 'Account name')}
               {renderSortableHeader('industry', 'Industry / Sector', 'left', 'Economic industry and sector')}
               {renderSortableHeader('category', 'Category', 'center', 'Asset classification')}
-              <th className="text-center" style={{ width: '40px' }}>Action</th>
+              <th className="text-center" style={{ width: '74px', minWidth: '74px' }}>Action</th>
             </tr>
           </thead>
           <tbody>
@@ -256,7 +259,7 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({
                 return (
                   <tr key={h.id} className="table-row-hover">
                     {/* 1. Symbol & Name */}
-                    <td className="cell-symbol">
+                    <td className="cell-symbol sticky-col">
                       <div className="symbol-cell">
                         <span className="symbol-ticker">{h.symbol}</span>
                         <span className="symbol-name" title={h.name || h.symbol}>
@@ -265,29 +268,13 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({
                       </div>
                     </td>
 
-                    {/* 2. Shares */}
-                    <td className="text-right font-mono font-medium">
-                      {h.shares.toLocaleString()}
-                    </td>
-
-                    {/* 3. Purchase Price */}
-                    <td className="text-right font-mono text-muted">
-                      {formatCurrency(h.purchasePrice)}
-                      <div className="text-xs text-dim">{h.purchaseDate}</div>
-                    </td>
-
-                    {/* 4. Cost Basis */}
-                    <td className="text-right font-mono font-medium">
-                      {formatCurrency(h.costBasis)}
-                    </td>
-
-                    {/* 5. Today's Market Price */}
+                    {/* 2. Today's Market Price */}
                     <td className="text-right font-mono font-bold">
                       {formatCurrency(h.currentPrice)}
                       {h.isStale && <span className="stale-dot" title="Cached Price" />}
                     </td>
 
-                    {/* 6. Share Price Change by the Day (Per share) */}
+                    {/* 3. Share Price Change by the Day (Per share) */}
                     <td className="text-right font-mono">
                       <div className={`font-semibold ${isShareDayGain ? 'text-success' : 'text-danger'}`}>
                         {isShareDayGain ? '+' : ''}{formatCurrency(h.dayChangePerShare)}
@@ -297,12 +284,37 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({
                       </div>
                     </td>
 
-                    {/* 7. Today's Total Value */}
+                    {/* 4. 52-Week Range Bar */}
+                    <td className="cell-range-bar">
+                      <RangeBar52Wk
+                        currentPrice={h.currentPrice}
+                        low={h.fiftyTwoWeekLow}
+                        high={h.fiftyTwoWeekHigh}
+                      />
+                    </td>
+
+                    {/* 5. Shares */}
+                    <td className="text-right font-mono font-medium">
+                      {h.shares.toLocaleString()}
+                    </td>
+
+                    {/* 6. Purchase Price */}
+                    <td className="text-right font-mono text-muted">
+                      {formatCurrency(h.purchasePrice)}
+                      <div className="text-xs text-dim">{h.purchaseDate}</div>
+                    </td>
+
+                    {/* 7. Cost Basis */}
+                    <td className="text-right font-mono font-medium">
+                      {formatCurrency(h.costBasis)}
+                    </td>
+
+                    {/* 8. Today's Total Value */}
                     <td className="text-right font-mono font-bold text-main">
                       {formatCurrency(h.currentValue)}
                     </td>
 
-                    {/* 8. Day Gain / Loss (Total position dollar gain today) */}
+                    {/* 9. Day Gain / Loss (Total position dollar gain today) */}
                     <td className="text-right font-mono">
                       <div className={`font-semibold ${isDayGain ? 'text-success' : 'text-danger'}`}>
                         {isDayGain ? '+' : ''}{formatCurrency(h.dayGainLoss)}
@@ -312,7 +324,7 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({
                       </div>
                     </td>
 
-                    {/* 9. Unrealized Gain / Loss */}
+                    {/* 10. Unrealized Gain / Loss */}
                     <td className="text-right font-mono">
                       <div className={`font-bold ${isGain ? 'text-success' : 'text-danger'}`}>
                         {isGain ? '+' : ''}{formatCurrency(h.unrealizedGainLoss)}
@@ -320,15 +332,6 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({
                       <div className={`text-xs ${isGain ? 'text-success' : 'text-danger'}`}>
                         {isGain ? '+' : ''}{h.unrealizedGainLossPercent.toFixed(2)}%
                       </div>
-                    </td>
-
-                    {/* 10. 52-Week Range Bar */}
-                    <td className="cell-range-bar">
-                      <RangeBar52Wk
-                        currentPrice={h.currentPrice}
-                        low={h.fiftyTwoWeekLow}
-                        high={h.fiftyTwoWeekHigh}
-                      />
                     </td>
 
                     {/* 11. Account Badge (if viewing all) */}
@@ -361,13 +364,26 @@ export const HoldingsTable: React.FC<HoldingsTableProps> = ({
 
                     {/* 14. Action */}
                     <td className="text-center">
-                      <button
-                        onClick={() => onDeletePosition(h.id)}
-                        className="btn-icon-delete"
-                        title="Delete position lot"
-                      >
-                        <Trash2 size={14} />
-                      </button>
+                      <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                        {onEditPosition && (
+                          <button
+                            type="button"
+                            onClick={() => onEditPosition(h)}
+                            className="btn-icon-edit"
+                            title={`Edit ${h.symbol} lot`}
+                          >
+                            <Pencil size={13} />
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => onDeletePosition(h.id)}
+                          className="btn-icon-delete"
+                          title="Delete position lot"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );

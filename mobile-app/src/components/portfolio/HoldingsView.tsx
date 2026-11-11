@@ -12,6 +12,7 @@ import {
   TrendingDown,
   Layers,
   ArrowUpDown,
+  Pencil,
 } from 'lucide-react';
 
 interface Props {
@@ -19,6 +20,7 @@ interface Props {
   accounts: Account[];
   onAddPositionClick: () => void;
   onDeletePosition: (id: string) => void;
+  onEditPosition: (holding: HoldingCalculated) => void;
   activeAccountId: string;
   selectedCategory: 'ALL' | AssetCategory;
   onSelectCategory: (category: 'ALL' | AssetCategory) => void;
@@ -38,6 +40,7 @@ export const HoldingsView: React.FC<Props> = ({
   accounts,
   onAddPositionClick,
   onDeletePosition,
+  onEditPosition,
   activeAccountId,
   selectedCategory,
   onSelectCategory,
@@ -154,6 +157,7 @@ export const HoldingsView: React.FC<Props> = ({
             accounts={accounts}
             onAddPositionClick={onAddPositionClick}
             onDeletePosition={onDeletePosition}
+            onEditPosition={onEditPosition}
             activeAccountId={activeAccountId}
             selectedCategory={selectedCategory}
             onSelectCategory={onSelectCategory}
@@ -243,18 +247,29 @@ export const HoldingsView: React.FC<Props> = ({
                       {acc && <span className="card-pill account">{acc.name}</span>}
                     </div>
 
-                    <button
-                      type="button"
-                      className="card-delete-btn"
-                      onClick={() => {
-                        if (window.confirm(`Delete ${h.symbol} lot from ${acc?.name || 'portfolio'}?`)) {
-                          onDeletePosition(h.id);
-                        }
-                      }}
-                      title="Delete Holding Lot"
-                    >
-                      <Trash2 size={14} />
-                    </button>
+                    <div className="card-actions-group" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                      <button
+                        type="button"
+                        className="card-edit-btn"
+                        onClick={() => onEditPosition(h)}
+                        title={`Edit ${h.symbol} lot`}
+                      >
+                        <Pencil size={13} />
+                        <span>Edit</span>
+                      </button>
+                      <button
+                        type="button"
+                        className="card-delete-btn"
+                        onClick={() => {
+                          if (window.confirm(`Delete ${h.symbol} lot from ${acc?.name || 'portfolio'}?`)) {
+                            onDeletePosition(h.id);
+                          }
+                        }}
+                        title="Delete Holding Lot"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
                   </div>
                 </div>
               );

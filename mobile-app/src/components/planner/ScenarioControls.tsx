@@ -229,34 +229,12 @@ export const ScenarioControls: React.FC<Props> = ({ inputs, onChange, onReset })
           </button>
         </div>
 
-        {/* File Export / Import Actions */}
-        <div className="preset-actions-row">
-          <button
-            type="button"
-            onClick={handleExport}
-            className="preset-io-btn export"
-            title="Save all current settings into a downloadable .json preset file"
-          >
-            <Download size={13} /> Save to File
-          </button>
-
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            className="preset-io-btn import"
-            title="Upload and load a saved .json preset file"
-          >
-            <Upload size={13} /> Upload File
-          </button>
+        {/* Centralized Backup Notice */}
+        <div style={{ marginTop: '10px', paddingTop: '8px', borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
+          <span style={{ fontSize: '0.72rem', color: 'var(--text-dim)', lineHeight: 1.4, display: 'block' }}>
+            Looking to export or import scenario files? All backups are now centralized in the <strong>Settings</strong> tab.
+          </span>
         </div>
-
-        <input
-          type="file"
-          ref={fileInputRef}
-          onChange={handleFileUpload}
-          accept=".json,application/json"
-          style={{ display: 'none' }}
-        />
 
         {/* Toast Notification */}
         {toastMessage && (

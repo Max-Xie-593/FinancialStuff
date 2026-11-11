@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import {
+  Layers,
   Terminal,
   Lock,
   ShieldCheck,
@@ -22,7 +23,8 @@ import { checkBackendHealth, setCustomApiUrl, getApiBaseUrl } from '../../servic
 import { Account, HoldingLot, MarketQuote, WatchlistStock, GridSimInputs } from '../../types/investment';
 import { FinancialInputs } from '../../engine/financeEngine';
 import { bridgePortfolioToPlanner, PortfolioBalanceBridge } from '../../services/bridgeService';
-import { exportFullPortfolioBackup, parseAndValidatePortfolioBackup, PortfolioBackupSchema } from '../../utils/scenarioIO';
+import { exportFullPortfolioBackup, exportFullSuiteBackup, parseAndValidateAnyBackup, PortfolioBackupSchema } from '../../utils/scenarioIO';
+import { exportPresetToFile } from '../../utils/presetIO';
 import { storageService } from '../../services/storageService';
 
 interface Props {
@@ -174,38 +176,73 @@ export const SettingsView: React.FC<Props> = ({
     setTimeout(() => setSyncToast(null), 5000);
   };
 
-    // Backup Export
-  const handleExportBackup = () => {
+      // 1. Export Complete Master Suite (Planner + Portfolio)
+  const handleExportFullSuite = () => {
+    exportFullSuiteBackup({
+      plannerInputs,
+      accounts,
+      holdings,
+      watchlist: watchlist || [],
+      gridInputs: gridInputs || ({} as any),
+      user: username,
+    });
+    setSyncToast('Complete Suite master backup exported!');
+    setTimeout(() => setSyncToast(null), 3500);
+  };
+
+  // 2. Export Portfolio Only
+  const handleExportPortfolio = () => {
     exportFullPortfolioBackup({
       accounts,
       holdings,
       watchlist: watchlist || [],
       gridInputs: gridInputs || ({} as any),
+      user: username,
     });
+    setSyncToast('Portfolio backup exported!');
+    setTimeout(() => setSyncToast(null), 3500);
   };
 
-  // Backup Import
+  // 3. Export Planner Parameters Only
+  const handleExportPlanner = () => {
+    exportPresetToFile(plannerInputs, `planner_age_${plannerInputs.startAge}_to_${plannerInputs.retirementAge}`);
+    setSyncToast('Wealth Planner parameters exported!');
+    setTimeout(() => setSyncToast(null), 3500);
+  };
+
+  // 4. Universal Backup Import (Auto-detects Suite, Portfolio, or Planner)
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     try {
-      const parsed = await parseAndValidatePortfolioBackup(file);
-      if (parsed) {
+      const result = await parseAndValidateAnyBackup(file);
+      if (result.kind === 'full_suite' && result.plannerInputs && result.portfolio) {
+        onUpdatePlannerInputs(result.plannerInputs);
         if (onRestoreBackup) {
-          onRestoreBackup(parsed);
+          onRestoreBackup(result.portfolio);
         } else {
-          storageService.saveAccounts(parsed.accounts);
-          storageService.saveHoldings(parsed.holdings);
-          storageService.saveWatchlist(parsed.watchlist);
-          storageService.saveGridInputs(parsed.gridInputs);
-          if (parsed.activeAccountId) {
-            storageService.setActiveAccountId(parsed.activeAccountId);
-          }
+          storageService.saveAccounts(result.portfolio.accounts);
+          storageService.saveHoldings(result.portfolio.holdings);
+          storageService.saveWatchlist(result.portfolio.watchlist);
+          storageService.saveGridInputs(result.portfolio.gridInputs);
         }
-        setSyncToast(`Portfolio restored: ${parsed.holdings.length} holdings loaded!`);
-        setTimeout(() => setSyncToast(null), 4000);
+        setSyncToast(result.summary);
+      } else if (result.kind === 'planner' && result.plannerInputs) {
+        onUpdatePlannerInputs(result.plannerInputs);
+        setSyncToast(result.summary);
+      } else if (result.kind === 'portfolio' && result.portfolio) {
+        if (onRestoreBackup) {
+          onRestoreBackup(result.portfolio);
+        } else {
+          storageService.saveAccounts(result.portfolio.accounts);
+          storageService.saveHoldings(result.portfolio.holdings);
+          storageService.saveWatchlist(result.portfolio.watchlist);
+          storageService.saveGridInputs(result.portfolio.gridInputs);
+        }
+        setSyncToast(result.summary);
       }
+      setTimeout(() => setSyncToast(null), 4500);
     } catch (err: any) {
       alert(`Import failed: ${err.message}`);
     } finally {
@@ -327,7 +364,7 @@ export const SettingsView: React.FC<Props> = ({
               Enter numbers only. This passcode will be required whenever reopening the app.
             </p>
             {pinError && <p className="text-danger text-xs mb-2" style={{ fontWeight: 600 }}>{pinError}</p>}
-            <div className="pin-inputs-row">
+            <div className="pin-inputs-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '12px' }}>
               <input
                 type="password"
                 inputMode="numeric"
@@ -337,6 +374,19 @@ export const SettingsView: React.FC<Props> = ({
                 value={newPin}
                 onChange={(e) => setNewPin(e.target.value.replace(/\D/g, ''))}
                 className="pin-text-field"
+                style={{
+                  background: 'rgba(11, 15, 25, 0.85)',
+                  border: '1px solid var(--border-card)',
+                  color: 'var(--text-main)',
+                  borderRadius: 'var(--radius-sm)',
+                  padding: '10px 12px',
+                  fontSize: '1rem',
+                  letterSpacing: '0.15em',
+                  textAlign: 'center',
+                  outline: 'none',
+                  width: '100%',
+                  fontFamily: 'var(--font-mono)',
+                }}
               />
               <input
                 type="password"
@@ -347,9 +397,22 @@ export const SettingsView: React.FC<Props> = ({
                 value={confirmPin}
                 onChange={(e) => setConfirmPin(e.target.value.replace(/\D/g, ''))}
                 className="pin-text-field"
+                style={{
+                  background: 'rgba(11, 15, 25, 0.85)',
+                  border: '1px solid var(--border-card)',
+                  color: 'var(--text-main)',
+                  borderRadius: 'var(--radius-sm)',
+                  padding: '10px 12px',
+                  fontSize: '1rem',
+                  letterSpacing: '0.15em',
+                  textAlign: 'center',
+                  outline: 'none',
+                  width: '100%',
+                  fontFamily: 'var(--font-mono)',
+                }}
               />
             </div>
-            <div className="pin-setup-actions">
+            <div className="pin-setup-actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
               <button
                 type="button"
                 className="btn btn-secondary btn-sm"
@@ -512,16 +575,16 @@ export const SettingsView: React.FC<Props> = ({
         </div>
       </section>
 
-      {/* Card 4: Backup & Restore */}
+      {/* Card 4: Unified Data Backup & Restore Center */}
       <section className="glass-panel settings-card">
         <div className="settings-card-header">
           <div className="settings-icon-badge file">
-            <Smartphone size={20} />
+            <Server size={20} />
           </div>
           <div>
-            <h2 className="settings-card-title">Data Backup & PWA Status</h2>
+            <h2 className="settings-card-title">Data Backup & Restore Center</h2>
             <p className="settings-card-subtitle">
-              Export portable JSON scenarios or install as a home screen app
+              Single unified place to export & restore Wealth Planner parameters and Portfolio assets
             </p>
           </div>
         </div>
@@ -529,47 +592,82 @@ export const SettingsView: React.FC<Props> = ({
         <div className="pwa-install-tip">
           <span className="text-xs text-muted">
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-                <Smartphone size={15} color="var(--accent-primary)" style={{ marginTop: '2px', flexShrink: 0 }} />
-                <div>
-                  <strong style={{ color: 'var(--text-main)' }}>iPhone Tip:</strong> In Safari, tap the <strong>Share</strong> button and choose <strong>"Add to Home Screen"</strong> for a permanent, standalone fullscreen app experience.
-                </div>
+              <Smartphone size={15} color="var(--accent-primary)" style={{ marginTop: '2px', flexShrink: 0 }} />
+              <div>
+                <strong style={{ color: 'var(--text-main)' }}>iPhone Tip:</strong> In Safari, tap the <strong>Share</strong> button and choose <strong>"Add to Home Screen"</strong> for a permanent, standalone fullscreen app experience.
               </div>
+            </div>
           </span>
         </div>
 
         <div className="backup-btn-grid" style={{ marginTop: '14px' }}>
+          {/* Universal Import Card */}
           <button
             type="button"
             className="backup-action-card"
-            onClick={handleExportBackup}
-          >
-            <div className="backup-action-icon primary">
-              <Download size={18} />
-            </div>
-            <div className="backup-action-text">
-              <span className="backup-action-title">Export Backup</span>
-              <span className="backup-action-sub">Download JSON scenario</span>
-            </div>
-          </button>
-
-          <button
-            type="button"
-            className="backup-action-card"
+            style={{ border: '1px solid rgba(16, 185, 129, 0.4)', background: 'rgba(16, 185, 129, 0.08)' }}
             onClick={() => fileInputRef.current?.click()}
           >
             <div className="backup-action-icon success">
               <Upload size={18} />
             </div>
             <div className="backup-action-text">
-              <span className="backup-action-title">Import Backup</span>
-              <span className="backup-action-sub">Restore from JSON file</span>
+              <span className="backup-action-title">Import & Restore File</span>
+              <span className="backup-action-sub">Auto-detects Suite, Portfolio, or Planner JSON</span>
             </div>
           </button>
+
+          {/* Export Complete Suite (All-In-One) */}
+          <button
+            type="button"
+            className="backup-action-card"
+            style={{ border: '1px solid rgba(59, 130, 246, 0.4)', background: 'rgba(59, 130, 246, 0.08)' }}
+            onClick={handleExportFullSuite}
+          >
+            <div className="backup-action-icon primary">
+              <Download size={18} />
+            </div>
+            <div className="backup-action-text">
+              <span className="backup-action-title">Export Complete Suite</span>
+              <span className="backup-action-sub">All-in-one Master backup (Planner + Portfolio)</span>
+            </div>
+          </button>
+
+          {/* Export Portfolio Only */}
+          <button
+            type="button"
+            className="backup-action-card"
+            onClick={handleExportPortfolio}
+          >
+            <div className="backup-action-icon purple">
+              <Layers size={18} />
+            </div>
+            <div className="backup-action-text">
+              <span className="backup-action-title">Export Portfolio Only</span>
+              <span className="backup-action-sub">{holdings.length} holdings across {accounts.length} accounts</span>
+            </div>
+          </button>
+
+          {/* Export Planner Only */}
+          <button
+            type="button"
+            className="backup-action-card"
+            onClick={handleExportPlanner}
+          >
+            <div className="backup-action-icon cyan">
+              <Sliders size={18} />
+            </div>
+            <div className="backup-action-text">
+              <span className="backup-action-title">Export Planner Parameters</span>
+              <span className="backup-action-sub">Ages, income, spending, tax & SS inputs</span>
+            </div>
+          </button>
+
           <input
             type="file"
             ref={fileInputRef}
+            accept=".json,application/json,text/plain"
             style={{ display: 'none' }}
-            accept=".json"
             onChange={handleFileChange}
           />
         </div>

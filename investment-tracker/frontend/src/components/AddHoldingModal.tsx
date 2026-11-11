@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Account, AssetCategory, HoldingLot } from '../types/investment';
 import { KNOWN_METADATA } from '../engine/portfolioEngine';
-import { X, PlusCircle } from 'lucide-react';
+import { X, PlusCircle, Pencil } from 'lucide-react';
 
 interface AddHoldingModalProps {
   isOpen: boolean;
@@ -9,6 +9,7 @@ interface AddHoldingModalProps {
   accounts: Account[];
   defaultAccountId: string;
   onSave: (holding: HoldingLot) => void;
+  initialHolding?: HoldingLot | null;
 }
 
 export const AddHoldingModal: React.FC<AddHoldingModalProps> = ({
@@ -17,7 +18,9 @@ export const AddHoldingModal: React.FC<AddHoldingModalProps> = ({
   accounts,
   defaultAccountId,
   onSave,
+  initialHolding,
 }) => {
+  const isEditing = Boolean(initialHolding);
   const [accountId, setAccountId] = useState(defaultAccountId === 'ALL' ? accounts[0]?.id || '' : defaultAccountId);
   const [symbol, setSymbol] = useState('');
   const [name, setName] = useState('');
@@ -42,12 +45,25 @@ export const AddHoldingModal: React.FC<AddHoldingModalProps> = ({
     setNotes('');
   };
 
-  // Reset form whenever the modal opens or active account changes
+  // Populate or reset form whenever modal opens or initialHolding changes
   useEffect(() => {
     if (isOpen) {
-      resetForm();
+      if (initialHolding) {
+        setAccountId(initialHolding.accountId || accounts[0]?.id || '');
+        setSymbol(initialHolding.symbol || '');
+        setName(initialHolding.name || '');
+        setCategory(initialHolding.category || 'Stock');
+        setShares(initialHolding.shares !== undefined ? String(initialHolding.shares) : '');
+        setPurchasePrice(initialHolding.purchasePrice !== undefined ? String(initialHolding.purchasePrice) : '');
+        setPurchaseDate(initialHolding.purchaseDate || new Date().toISOString().split('T')[0]);
+        setSector(initialHolding.sector || '');
+        setIndustry(initialHolding.industry || '');
+        setNotes(initialHolding.notes || '');
+      } else {
+        resetForm();
+      }
     }
-  }, [isOpen, defaultAccountId, accounts]);
+  }, [isOpen, initialHolding, defaultAccountId, accounts]);
 
   if (!isOpen) return null;
 
@@ -77,8 +93,8 @@ export const AddHoldingModal: React.FC<AddHoldingModalProps> = ({
       return;
     }
 
-    const newLot: HoldingLot = {
-      id: `lot-${Date.now()}`,
+    const savedLot: HoldingLot = {
+      id: initialHolding?.id || `lot-${Date.now()}`,
       accountId: accountId || accounts[0]?.id || 'acc_default',
       symbol: symbol.trim().toUpperCase(),
       name: name.trim() || undefined,
@@ -91,7 +107,7 @@ export const AddHoldingModal: React.FC<AddHoldingModalProps> = ({
       notes: notes.trim() || undefined,
     };
 
-    onSave(newLot);
+    onSave(savedLot);
     resetForm();
     onClose();
   };
@@ -101,8 +117,8 @@ export const AddHoldingModal: React.FC<AddHoldingModalProps> = ({
       <div className="glass-panel modal-card" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <div className="modal-title-group">
-            <PlusCircle size={20} className="text-primary" />
-            <h3 className="modal-title">Record Holding Lot</h3>
+            {isEditing ? <Pencil size={20} className="text-primary" /> : <PlusCircle size={20} className="text-primary" />}
+            <h3 className="modal-title">{isEditing ? 'Edit Holding Lot' : 'Record Holding Lot'}</h3>
           </div>
           <button onClick={handleClose} className="modal-close-btn" aria-label="Close modal">
             <X size={18} />
@@ -257,7 +273,7 @@ export const AddHoldingModal: React.FC<AddHoldingModalProps> = ({
               Cancel
             </button>
             <button type="submit" className="btn btn-primary">
-              Save Holding Lot
+              {isEditing ? 'Update Holding Lot' : 'Save Holding Lot'}
             </button>
           </div>
         </form>

@@ -3067,3 +3067,207 @@ input[type="password"]:focus {
   width: 100% !important;
   box-sizing: border-box !important;
 }
+
+/* ==========================================================================
+   FROZEN / LOCKED FIRST COLUMN (EXCEL-STYLE FREEZE PANES)
+   ========================================================================== */
+
+.table-scroll-container,
+.ledger-container {
+  overflow-x: auto !important;
+  overflow-y: auto !important;
+  max-height: 72vh !important;
+  -webkit-overflow-scrolling: touch !important;
+  width: 100% !important;
+  position: relative !important;
+}
+
+/* Ensure separate borders so sticky cells render cleanly without border ghosting */
+.data-table,
+.ledger-table {
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+}
+
+/* Sticky Column Headers (Vertical Scroll Lock) */
+.data-table thead th,
+.ledger-table thead th {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 14 !important;
+  background: #0b0f19 !important;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.16) !important;
+}
+
+/* Top-Left Corner Cell: Sticky on BOTH X and Y axes (Excel Freeze Pane) */
+.data-table thead th:first-child,
+.data-table thead th.sticky-col,
+.ledger-table thead th:first-child {
+  position: sticky !important;
+  top: 0 !important;
+  left: 0 !important;
+  z-index: 28 !important;
+  background: #0b0f19 !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.16) !important;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.16) !important;
+  box-shadow: 4px 4px 10px rgba(0, 0, 0, 0.45) !important;
+  min-width: 115px !important;
+  max-width: 145px !important;
+}
+
+/* Sticky Data Cells for Symbol / Asset */
+.data-table td:first-child,
+.data-table td.cell-symbol,
+.data-table td.sticky-col {
+  position: sticky !important;
+  left: 0 !important;
+  z-index: 8 !important;
+  background: #0f172a !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.16) !important;
+  box-shadow: 4px 0 10px rgba(0, 0, 0, 0.45) !important;
+  min-width: 115px !important;
+  max-width: 145px !important;
+}
+
+/* Keep sticky cell background opaque on row hover */
+.data-table tr.table-row-hover:hover td:first-child,
+.data-table tr:hover td:first-child,
+.data-table tr.table-row-hover:hover td.cell-symbol,
+.data-table tr:hover td.cell-symbol,
+.data-table tr.table-row-hover:hover td.sticky-col,
+.data-table tr:hover td.sticky-col {
+  background: #1e293b !important;
+}
+
+/* Colspan cell (e.g. empty message) should NOT be sticky */
+.data-table td[colspan] {
+  position: static !important;
+  box-shadow: none !important;
+}
+
+/* Also apply to Yearly Ledger table if user scrolls ledger */
+.ledger-table {
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+}
+
+.ledger-table th:first-child {
+  position: sticky !important;
+  left: 0 !important;
+  z-index: 15 !important;
+  background: #0b0f19 !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.16) !important;
+  box-shadow: 4px 0 10px rgba(0, 0, 0, 0.45) !important;
+  min-width: 60px !important;
+}
+
+.ledger-table td:first-child {
+  position: sticky !important;
+  left: 0 !important;
+  z-index: 8 !important;
+  background: #0f172a !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.16) !important;
+  box-shadow: 4px 0 10px rgba(0, 0, 0, 0.45) !important;
+  min-width: 60px !important;
+}
+
+.ledger-table tr:hover td:first-child {
+  background: #1e293b !important;
+}
+
+.ledger-table tr.retired-row td:first-child {
+  background: #251e4b !important;
+}
+
+/* Unified Backup Hub Icon Accents */
+.backup-action-icon.purple {
+  background: rgba(139, 92, 246, 0.15) !important;
+  color: #a78bfa !important;
+}
+
+.backup-action-icon.cyan {
+  background: rgba(6, 182, 212, 0.15) !important;
+  color: #22d3ee !important;
+}
+
+/* Edit Holding Lot Buttons (Card & Table Views) */
+.card-edit-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  padding: 6px 11px !important;
+  border-radius: var(--radius-sm) !important;
+  background: rgba(59, 130, 246, 0.14) !important;
+  border: 1px solid rgba(59, 130, 246, 0.35) !important;
+  color: #93c5fd !important;
+  font-size: 0.76rem !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  font-family: var(--font-body) !important;
+  outline: none !important;
+}
+
+.card-edit-btn:hover,
+.card-edit-btn:active {
+  background: rgba(59, 130, 246, 0.28) !important;
+  color: #fff !important;
+  border-color: rgba(59, 130, 246, 0.7) !important;
+  transform: translateY(-1px) !important;
+}
+
+.btn-icon-edit {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 28px !important;
+  height: 28px !important;
+  border-radius: 6px !important;
+  background: rgba(59, 130, 246, 0.12) !important;
+  border: 1px solid rgba(59, 130, 246, 0.3) !important;
+  color: #93c5fd !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  outline: none !important;
+}
+
+.btn-icon-edit:hover,
+.btn-icon-edit:active {
+  background: rgba(59, 130, 246, 0.26) !important;
+  color: #fff !important;
+  border-color: rgba(59, 130, 246, 0.65) !important;
+  transform: translateY(-1px) !important;
+}
+
+/* Ensure Category Filter Buttons NEVER have white default browser button styling */
+.btn-filter,
+button.btn-filter {
+  background: rgba(255, 255, 255, 0.05) !important;
+  color: var(--text-muted) !important;
+  border: 1px solid var(--border-card) !important;
+  border-radius: 9999px !important;
+  padding: 6px 14px !important;
+  font-size: 0.78rem !important;
+  font-weight: 500 !important;
+  cursor: pointer !important;
+  white-space: nowrap !important;
+  transition: all 0.2s ease !important;
+  outline: none !important;
+}
+
+.btn-filter:hover,
+button.btn-filter:hover {
+  background: rgba(255, 255, 255, 0.12) !important;
+  color: var(--text-main) !important;
+  border-color: rgba(255, 255, 255, 0.22) !important;
+}
+
+.btn-filter-active,
+button.btn-filter-active,
+.btn-filter.btn-filter-active {
+  background: rgba(59, 130, 246, 0.22) !important;
+  color: #93c5fd !important;
+  border-color: rgba(59, 130, 246, 0.55) !important;
+  font-weight: 600 !important;
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.25) !important;
+}

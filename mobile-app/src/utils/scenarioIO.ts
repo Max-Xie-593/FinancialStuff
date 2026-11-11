@@ -1,5 +1,7 @@
 import { GridSimInputs, Account, HoldingLot, WatchlistStock } from '../types/investment';
 import { DEFAULT_GRID_INPUTS } from '../engine/gridEngine';
+import { FinancialInputs, DEFAULT_INPUTS } from '../engine/financeEngine';
+import { exportPresetToFile } from './presetIO';
 
 export interface GridScenarioFileSchema {
   $schema: string;
@@ -185,4 +187,160 @@ export async function parseAndValidatePortfolioBackup(file: File): Promise<Portf
     watchlist: Array.isArray(root.watchlist) ? root.watchlist : [],
     gridInputs: root.gridInputs && typeof root.gridInputs === 'object' ? root.gridInputs : DEFAULT_GRID_INPUTS,
   };
+}
+
+export interface FullSuiteBackupSchema {
+  $schema: string;
+  version: number;
+  exportedAt: string;
+  user?: string;
+  plannerInputs: FinancialInputs;
+  portfolio: {
+    accounts: Account[];
+    holdings: HoldingLot[];
+    watchlist: WatchlistStock[];
+    gridInputs: GridSimInputs;
+    activeAccountId?: string;
+  };
+}
+
+/**
+ * Exports complete Financial Suite master backup (both Wealth Planner inputs & Portfolio assets).
+ */
+export function exportFullSuiteBackup(data: {
+  plannerInputs: FinancialInputs;
+  accounts: Account[];
+  holdings: HoldingLot[];
+  watchlist: WatchlistStock[];
+  gridInputs: GridSimInputs;
+  activeAccountId?: string;
+  user?: string;
+}): void {
+  const timestamp = new Date().toISOString().split('T')[0];
+  const filename = `financial_suite_master_backup_${timestamp}.json`;
+
+  const payload: FullSuiteBackupSchema = {
+    $schema: 'financial-suite-full-backup-v1',
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    user: data.user,
+    plannerInputs: data.plannerInputs,
+    portfolio: {
+      accounts: data.accounts,
+      holdings: data.holdings,
+      watchlist: data.watchlist,
+      gridInputs: data.gridInputs,
+      activeAccountId: data.activeAccountId,
+    },
+  };
+
+  const jsonString = JSON.stringify(payload, null, 2);
+  const blob = new Blob([jsonString], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+export interface UniversalRestoreResult {
+  kind: 'full_suite' | 'portfolio' | 'planner';
+  summary: string;
+  plannerInputs?: FinancialInputs;
+  portfolio?: PortfolioBackupSchema;
+}
+
+/**
+ * Universal Backup Importer
+ * Automatically detects whether an uploaded JSON file is:
+ * 1) A Full Suite Master Backup (Planner + Portfolio)
+ * 2) An Investment Tracker Portfolio Backup (accounts, holdings, watchlist)
+ * 3) A Wealth Planner Scenario Preset (startAge, annualIncome, tax rates, expenses)
+ */
+export async function parseAndValidateAnyBackup(file: File): Promise<UniversalRestoreResult> {
+  const content = await file.text();
+  let parsed: any;
+
+  try {
+    parsed = JSON.parse(content);
+  } catch {
+    throw new Error('Invalid JSON format. Please upload a valid .json backup file.');
+  }
+
+  if (!parsed || typeof parsed !== 'object') {
+    throw new Error('Corrupted JSON file structure.');
+  }
+
+  // 1. Full Suite Master Backup
+  if (
+    parsed.$schema === 'financial-suite-full-backup-v1' ||
+    (parsed.plannerInputs && (parsed.portfolio || parsed.accounts))
+  ) {
+    const planner = parsed.plannerInputs;
+    const port = parsed.portfolio || parsed;
+    const holdingsCount = port.holdings?.length || 0;
+    const accountsCount = port.accounts?.length || 0;
+
+    return {
+      kind: 'full_suite',
+      summary: `Restored Complete Financial Suite (${holdingsCount} holdings, ${accountsCount} accounts, and all Wealth Planner parameters)!`,
+      plannerInputs: {
+        ...DEFAULT_INPUTS,
+        ...planner,
+        expenseCategories: {
+          ...DEFAULT_INPUTS.expenseCategories,
+          ...(planner.expenseCategories || {}),
+        },
+      },
+      portfolio: {
+        $schema: 'investment-tracker-backup-v1',
+        version: 1,
+        exportedAt: parsed.exportedAt || new Date().toISOString(),
+        user: parsed.user,
+        activeAccountId: port.activeAccountId,
+        accounts: port.accounts || [],
+        holdings: port.holdings || [],
+        watchlist: port.watchlist || [],
+        gridInputs: port.gridInputs || DEFAULT_GRID_INPUTS,
+      },
+    };
+  }
+
+  // 2. Wealth Planner Preset
+  if (
+    parsed.$schema === 'personal-finance-planner-preset-v1' ||
+    (parsed.inputs && (parsed.inputs.startAge !== undefined || parsed.inputs.annualIncome !== undefined)) ||
+    (parsed.startAge !== undefined && parsed.annualIncome !== undefined)
+  ) {
+    const rawInputs = parsed.inputs || parsed;
+    const name = parsed.name || file.name.replace(/\.[^/.]+$/, '');
+    return {
+      kind: 'planner',
+      summary: `Restored Wealth Planner Scenario "${name}"!`,
+      plannerInputs: {
+        ...DEFAULT_INPUTS,
+        ...rawInputs,
+        expenseCategories: {
+          ...DEFAULT_INPUTS.expenseCategories,
+          ...(rawInputs.expenseCategories || {}),
+        },
+      },
+    };
+  }
+
+  // 3. Portfolio Backup
+  try {
+    const portfolioData = await parseAndValidatePortfolioBackup(file);
+    return {
+      kind: 'portfolio',
+      summary: `Restored Portfolio (${portfolioData.holdings.length} holdings across ${portfolioData.accounts.length} accounts)!`,
+      portfolio: portfolioData,
+    };
+  } catch (err: any) {
+    throw new Error('Unrecognized backup format. The uploaded file does not match a Portfolio, Wealth Planner, or Suite backup.');
+  }
 }

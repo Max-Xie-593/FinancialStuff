@@ -45,14 +45,44 @@ export const ProjectionChart: React.FC<Props> = ({ projections, retirementAge })
         </div>
 
         {depletedYear ? (
-          <div className="badge badge-danger" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-            <AlertTriangle size={14} color="#ef4444" style={{ flexShrink: 0 }} />
-            <span>Depleted @ Age {depletedYear.age}</span>
+          <div
+            className="badge badge-danger"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              backgroundColor: 'rgba(239, 68, 68, 0.16)',
+              color: '#f87171',
+              border: '1px solid rgba(239, 68, 68, 0.45)',
+              padding: '5px 12px',
+              borderRadius: '9999px',
+              fontSize: '0.8rem',
+              fontWeight: 700,
+              boxShadow: '0 0 12px rgba(239, 68, 68, 0.25)',
+            }}
+          >
+            <AlertTriangle size={15} color="#ef4444" style={{ flexShrink: 0 }} />
+            <span style={{ color: '#fca5a5' }}>Depleted @ Age {depletedYear.age}</span>
           </div>
         ) : (
-          <div className="badge badge-success" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-            <CheckCircle size={14} color="#10b981" style={{ flexShrink: 0 }} />
-            <span>Solvent to Age 100</span>
+          <div
+            className="badge badge-success"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              backgroundColor: 'rgba(16, 185, 129, 0.16)',
+              color: '#34d399',
+              border: '1px solid rgba(16, 185, 129, 0.45)',
+              padding: '5px 12px',
+              borderRadius: '9999px',
+              fontSize: '0.8rem',
+              fontWeight: 700,
+              boxShadow: '0 0 12px rgba(16, 185, 129, 0.25)',
+            }}
+          >
+            <CheckCircle size={15} color="#10b981" style={{ flexShrink: 0 }} />
+            <span style={{ color: '#6ee7b7' }}>Solvent to Age 100</span>
           </div>
         )}
       </div>

@@ -34,6 +34,7 @@ export const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'portfolio' | 'watchlist' | 'simulator' | 'accounts'>('portfolio');
   const [selectedCategory, setSelectedCategory] = useState<'ALL' | AssetCategory>('ALL');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [editingHolding, setEditingHolding] = useState<HoldingLot | null>(null);
   const [isBackendOnline, setIsBackendOnline] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -132,6 +133,22 @@ export const App: React.FC = () => {
     // Fetch quote for newly added ticker if not present
     if (!quotes[lot.symbol.toUpperCase()]) {
       refreshQuotes(false);
+    }
+  };
+
+  const handleSaveHolding = (lot: HoldingLot) => {
+    if (editingHolding) {
+      const updated = holdings.map((h) => (h.id === lot.id ? lot : h));
+      setHoldings(updated);
+      storageService.saveHoldings(updated, session?.user?.id);
+      syncToCloud(accounts, updated, watchlist, gridInputs);
+      setEditingHolding(null);
+      setIsAddModalOpen(false);
+      if (!quotes[lot.symbol.toUpperCase()]) {
+        refreshQuotes(false);
+      }
+    } else {
+      handleAddHolding(lot);
     }
   };
 
@@ -366,8 +383,12 @@ export const App: React.FC = () => {
               activeAccountId={activeAccountId}
               selectedCategory={selectedCategory}
               onSelectCategory={setSelectedCategory}
-              onAddPositionClick={() => setIsAddModalOpen(true)}
+              onAddPositionClick={() => {
+                setEditingHolding(null);
+                setIsAddModalOpen(true);
+              }}
               onDeletePosition={handleDeleteHolding}
+              onEditPosition={(holding) => setEditingHolding(holding)}
             />
           </div>
         )}
@@ -402,13 +423,17 @@ export const App: React.FC = () => {
         )}
       </main>
 
-      {/* Add Position Modal */}
+      {/* Add / Edit Position Modal */}
       <AddHoldingModal
-        isOpen={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
+        isOpen={isAddModalOpen || editingHolding !== null}
+        onClose={() => {
+          setIsAddModalOpen(false);
+          setEditingHolding(null);
+        }}
         accounts={accounts}
         defaultAccountId={activeAccountId}
-        onSave={handleAddHolding}
+        onSave={handleSaveHolding}
+        initialHolding={editingHolding}
       />
 
       {/* Auth Modal */}
